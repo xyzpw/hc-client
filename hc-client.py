@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-import websocket, json, threading
+import websocket, json, threading, os
+
+def clear():
+    from os import system as s;s("clear")
 
 class COLORS:
     RED = '\033[31m'
@@ -94,5 +97,7 @@ while 1:
         print(f"{cursorClear()}")
     except KeyboardInterrupt:
         exit("\nTerminating script...")
-    if myText != '':
+    if myText != '' and myText != '--clear':
         send({"cmd": "chat", "text": myText})
+    if myText == '--clear':
+        clear()
