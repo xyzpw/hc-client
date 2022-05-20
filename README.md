@@ -7,3 +7,6 @@ Add exec perms <br/>
 
 Execute script <br/>
 `./hc-client.py` <br/>
+
+# preview(s)
+![](/preview.png)
