@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import websocket, json, threading, os
+import websocket, json, threading, os, playsound
 
+NOTIFY = False
 def clear():
     from os import system as s;s("clear")
 
@@ -73,6 +74,7 @@ def main():
                 print(f"<null> * {text}\n")
                 print(COLORS.RESET)
         elif cmd == 'chat':
+            if NOTIFY == True: playsound.playsound('notify.mp3')
             user = data['nick']; user = f"{COLORS.BLUE}{user}{COLORS.RESET}"
             text = data['text']
             uType = data['uType']
@@ -97,7 +99,12 @@ while 1:
         print(f"{cursorClear()}")
     except KeyboardInterrupt:
         exit("\nTerminating script...")
-    if myText != '' and myText != '--clear':
+    if myText != '' and myText != '--clear' and myText != '--notify':
         send({"cmd": "chat", "text": myText})
     if myText == '--clear':
         clear()
+    if myText == '--notify':
+        if NOTIFY == False:
+            NOTIFY = True
+        else:
+            NOTIFY = False
