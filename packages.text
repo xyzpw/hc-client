@@ -1,7 +1,0 @@
-pip3 uninstall websocket
-pip3 install websocket-client
-
-json
-threading
-os
-playsound
