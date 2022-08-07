@@ -1,25 +1,33 @@
 # hc-client
 A simple hack.chat client in less than 100 lines of code
 
-# usage
-Add exec perms <br/>
-`chmod +x hc-client.py` <br/>
+<br />
 
-Execute script <br/>
-`./hc-client.py` <br/>
+## Installation
 
-## installation
-Run command in konsole or whatever terminal you use:
-`
+```
 git clone https://github.com/potatochips2001/hc-client
-` <br/>
-Check <a target="_blank" href="/packages.text">packages.text</a> to verify you have the necessary packages to run the script properly. <br/>
-If you have websocket package installed by default you may need to run `pip3 uninstall websocket && pip3 install websocket-client`
+cd hc-client
+pip3 install -r requirements.txt
+```
+You may have to run `pip3 uninstall websocket` in order to import websocket-client.
 
-## default commands
-In script commands: <br/>
-`--clear`    Clears the screen <br/>
-`--notify`    Plays notify.mp3 every time a message is received (you can disable it, too)
+<br />
 
-# preview(s)
-![](/preview.png)
+## Usage
+
+```
+python3 hc-client
+```
+
+<br />
+
+## Commands
+In script commands:
+- `--clear`     Clears the screen
+- `--notify`    Plays notify.mp3 every time a message is received (you can disable it, too)
+
+<br />
+
+## Preview(s)
+![Preview](/preview.png)
