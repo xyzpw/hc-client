@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 
-import websocket, json, threading, os, playsound
+import websocket, json, threading, os, playsound, colorama
 
 NOTIFY = False
+colorama.init()
 def clear():
     from os import system as s;s("clear")
 
 class COLORS:
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    BLUE = '\033[34m'
-    RESET = '\033[0m'
+    RED = colorama.Fore.RED
+    GREEN = colorama.Fore.GREEN
+    BLUE = colorama.Fore.BLUE
+    RESET = colorama.Fore.RESET
 
 # escape codes are for linux!
 def cursorUp(unit):
