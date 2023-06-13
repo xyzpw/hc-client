@@ -6,7 +6,7 @@ A simple hack.chat client in less than 100 lines of code
 ## Installation
 
 ```
-git clone https://github.com/potatochips2001/hc-client
+git clone https://github.com/xyzpw/hc-client
 cd hc-client
 pip3 install -r requirements.txt
 ```
