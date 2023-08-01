@@ -74,8 +74,9 @@ def main():
                 print(f"<null> * {text}\n")
                 print(COLORS.RESET)
         elif cmd == 'chat':
-            if NOTIFY == True: playsound.playsound('notify.mp3')
-            user = data['nick']; user = f"{COLORS.BLUE}{user}{COLORS.RESET}"
+            user = data['nick']
+            if NOTIFY == True and nick != user: playsound.playsound('notify.mp3')
+            user = f"{COLORS.BLUE}{user}{COLORS.RESET}"
             text = data['text']
             uType = data['uType']
             ISMOD = uType == 'mod'
