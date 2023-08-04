@@ -90,6 +90,7 @@ def main():
 ws = websocket.WebSocket()
 ws.connect("wss://hack.chat/chat-ws")
 send({"cmd": "join", "channel": channel, "nick": nick})
+nick = nick[:nick.find('#')]
 
 p = threading.Thread(target=main, daemon=True)
 p.start()
