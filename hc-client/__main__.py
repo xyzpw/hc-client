@@ -43,8 +43,13 @@ def getReadableTime(timestamp):
     readableTime = datetime.datetime.fromtimestamp(timestamp).strftime("%H:%M:%S")
     return readableTime
 
-nick = prompt_toolkit.prompt("Nick: ")
-channel = prompt_toolkit.prompt("Channel: ")
+try:
+    nick = prompt_toolkit.prompt("Nick: ")
+    channel = prompt_toolkit.prompt("Channel: ")
+except (KeyboardInterrupt, EOFError):
+    exit("Terminating script...")
+except:
+    exit()
 
 def main():
     global nickTags
