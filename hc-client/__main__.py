@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 
-import websocket, json, threading, os, playsound, colorama
+import websocket
+import json
+import threading
+import os
+import playsound
+import colorama
+import prompt_toolkit
+import datetime
+import time
 
 NOTIFY = False
 colorama.init()
-def clear():
-    from os import system as s;s("clear")
+nickTags = []
+uiSession = prompt_toolkit.PromptSession()
+
+clear = lambda: os.system("cls") if os.name == "nt" else os.system("clear")
 
 class COLORS:
     RED = colorama.Fore.RED
@@ -13,7 +23,6 @@ class COLORS:
     BLUE = colorama.Fore.BLUE
     RESET = colorama.Fore.RESET
 
-# escape codes are for linux!
 def cursorUp(unit):
     return f'\033[{unit}A'
 def cursorDown(unit):
@@ -30,26 +39,35 @@ def send(msg):
         ws.send(json.dumps(msg))
 
 
-nick = input("Nick: ")
-channel = input("Channel: ")
+def getReadableTime(timestamp):
+    readableTime = datetime.datetime.fromtimestamp(timestamp).strftime("%H:%M:%S")
+    return readableTime
 
-# taking break (touching grass)
+nick = prompt_toolkit.prompt("Nick: ")
+channel = prompt_toolkit.prompt("Channel: ")
+
 def main():
+    global nickTags
     while ws.connected:
         data = json.loads(ws.recv())
         cmd = data['cmd']
         if cmd == 'onlineSet':
             nicks = data['nicks']
+            for i in nicks: nickTags.append(f"@{i}")
             print(COLORS.GREEN)
             print(f"{cursorUp(1)}* Users online: {', '.join(nicks)}\n")
             print(COLORS.RESET)
         elif cmd == 'onlineAdd':
             user = data['nick']
+            nicks.append(user)
+            nickTags.append(f"@{user}")
             print(COLORS.GREEN)
             print(f"{cursorUp(1)}* @{user} joined\n")
             print(COLORS.RESET)
         elif cmd == 'onlineRemove':
             user = data['nick']
+            nicks.remove(user)
+            nickTags.remove(f"@{user}")
             print(COLORS.GREEN)
             print(f"{cursorUp(1)}* @{user} left\n")
             print(COLORS.RESET)
@@ -64,29 +82,38 @@ def main():
             print(f"* {text}\n")
             print(COLORS.RESET)
         elif cmd == 'emote':
+            timestamp = time.time() // 1
             text = data['text']
             if 'trip' in data:
                 trip = data['trip']
                 print(COLORS.GREEN)
-                print(f"<{trip}>* {text}\n")
+                print(f"|{getReadableTime(timestamp)}| <{trip}>* {text}\n")
                 print(COLORS.RESET)
             else:
                 print(COLORS.GREEN)
-                print(f"<null> * {text}\n")
+                print(f"|{getReadableTime(timestamp)}| <null> * {text}\n")
                 print(COLORS.RESET)
         elif cmd == 'chat':
+            timestamp = time.time() // 1
             user = data['nick']
+            coloredUser = user
             if NOTIFY == True and nick != user: playsound.playsound('notify.mp3')
-            user = f"{COLORS.BLUE}{user}{COLORS.RESET}"
             text = data['text']
             uType = data['uType']
-            ISMOD = uType == 'mod'
-            if ISMOD: user = f"{COLORS.GREEN}{data['nick']}{COLORS.RESET}"
+            match uType:
+                case 'mod':
+                    coloredUser = f"{COLORS.GREEN}{data['nick']}{COLORS.RESET}"
+                case 'admin':
+                    coloredUser = f"{COLORS.RED}{data['nick']}{COLORS.RESET}"
+                case "user":
+                    coloredUser = f"{COLORS.BLUE}{data['nick']}{COLORS.RESET}"
             if 'trip' in data:
                 trip = data['trip']
-                print(f"{cursorUp(1)}<{trip}> {user}: {text}\n")
+                print(f"{cursorUp(1)}|{getReadableTime(timestamp)}| <{trip}> {coloredUser}: {text}\n")
+                #print(f"{cursorUp(1)}<{trip}> {user}: {text}\n")
             else:
-                print(f"{cursorUp(1)}{user}: {text}\n")
+                print(f"{cursorUp(1)}|{getReadableTime(timestamp)}| {coloredUser}: {text}\n")
+                #print(f"{cursorUp(1)}{user}: {text}\n")
 
 ws = websocket.WebSocket()
 ws.connect("wss://hack.chat/chat-ws")
@@ -99,9 +126,12 @@ p.start()
 
 while 1:
     try:
-        myText = input()
-        print(f"{cursorClear()}")
-    except KeyboardInterrupt:
+        with prompt_toolkit.patch_stdout.patch_stdout(raw=True):
+            uiCompleter = prompt_toolkit.completion.WordCompleter(nickTags, match_middle=False, ignore_case=True, sentence=True)
+            myText = uiSession.prompt(completer=uiCompleter, wrap_lines=False)
+            print(f"{cursorClear()}")
+            myText = myText.replace('--nl', '\n')
+    except (KeyboardInterrupt, EOFError):
         exit("\nTerminating script...")
     if myText != '' and myText != '--clear' and myText != '--notify':
         send({"cmd": "chat", "text": myText})
