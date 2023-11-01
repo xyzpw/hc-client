@@ -9,11 +9,18 @@ import colorama
 import prompt_toolkit
 import datetime
 import time
+import argparse
 
 NOTIFY = False
 colorama.init()
 nickTags = []
 uiSession = prompt_toolkit.PromptSession()
+
+parse = argparse.ArgumentParser()
+parse.add_argument("--nick", help="Name to use when joining channel", dest="_nick")
+parse.add_argument("--channel", help="Channel to join", dest="_channel")
+args = parse.parse_args()
+var_args = vars(args)
 
 clear = lambda: os.system("cls") if os.name == "nt" else os.system("clear")
 
@@ -44,12 +51,12 @@ def getReadableTime(timestamp):
     return readableTime
 
 try:
-    nick = prompt_toolkit.prompt("Nick: ")
-    channel = prompt_toolkit.prompt("Channel: ")
+    nick = prompt_toolkit.prompt("Nick: ") if var_args.get("_nick") == None else var_args.get("_nick")
+    channel = prompt_toolkit.prompt("Channel: ") if var_args.get("_channel") == None else var_args.get("_channel")
 except (KeyboardInterrupt, EOFError):
     exit("Terminating script...")
-except:
-    exit()
+except Exception as _e:
+    exit(_e)
 
 def main():
     global nickTags
