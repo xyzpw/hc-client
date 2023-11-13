@@ -19,7 +19,7 @@ python3 hc-client
 ## Commands
 In script commands:
 - `--clear`     Clears the screen
-- `--notify`    Plays notify.mp3 every time a message is received (you can disable it, too)
+- `--notify [on/off]`    Plays notify.mp3 every time a message is received, use without options to view notify status
 - `--nl`        Creates a new line in your message
 
 ## Preview(s)
