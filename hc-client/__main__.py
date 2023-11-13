@@ -145,12 +145,18 @@ while 1:
             myText = myText.replace('--nl', '\n')
     except (KeyboardInterrupt, EOFError):
         exit("\nTerminating script...")
-    if myText != '' and myText != '--clear' and myText != '--notify':
+    if myText != '' and myText != '--clear' and myText.startswith("--notify") == False:
         send({"cmd": "chat", "text": myText})
     if myText == '--clear':
         clear()
-    if myText == '--notify':
-        if NOTIFY == False:
-            NOTIFY = True
-        else:
-            NOTIFY = False
+    if myText.startswith("--notify"):
+        match myText:
+            case "--notify":
+                print(f"Notify status: {NOTIFY}")
+            case "--notify on":
+                NOTIFY = True
+                print(f"Notifications enabled")
+            case "--notify off":
+                NOTIFY = False
+                print(f"Notifications disabled")
+
