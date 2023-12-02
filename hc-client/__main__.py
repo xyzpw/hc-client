@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Version:  3.0.1
+# Version:  3.1.0
 
 import websocket
 import json
@@ -17,7 +17,7 @@ import re
 from pygments.styles import get_all_styles
 from pygments import highlight
 from pygments.style import Style
-from pygments.lexers import *
+import pygments.lexers
 from pygments.formatters import Terminal256Formatter
 
 parser = argparse.ArgumentParser()
@@ -33,37 +33,19 @@ uiSession = prompt_toolkit.PromptSession()
 
 allSyntaxStyles = list(get_all_styles())
 
-getCode = re.compile(r"^`{3}([\w]*)\n([\S\s]+?)\n`{3}$")
+#getCode = re.compile(r"^`{3}([\w]*)\n([\S\s]+?)\n`{3}$") # v3.0.1
+getCode = re.compile(r"```(?P<lang>\w+)?\n(?P<code>.*?)\n```", re.DOTALL)
 
-def getFormattedCode(lang="python", code=None, style="monokai"):
-    langInLangs = lang in langs
+def getFormattedCode(lang="python", code="", style="monokai"):
+    try:
+        lexer = pygments.lexers.get_lexer_by_name(lang)
+    except pygments.util.ClassNotFound:
+        lexer = pygments.lexers.guess_lexer(code)
     syntaxExists = style in allSyntaxStyles
-    if langInLangs and syntaxExists:
-        lang = langs.get(lang)
-    else:
-        lang = langs.get("md")
-        style = mySyntaxStyle
-    result = highlight(code, lang, Terminal256Formatter(style=style))
+    if syntaxExists == False:
+        style="monokai"
+    result = highlight(code, lexer, Terminal256Formatter(style=style))
     return result
-
-#from pygments.lexers import Python3Lexer, CppLexer, CssLexer, BrainfuckLexer, HtmlLexer, JavascriptLexer, JavaLexer, MarkdownLexer
-langs = {
-    "python": Python3Lexer(),
-    "python3": Python3Lexer(),
-    "py": Python3Lexer(),
-    "bf": BrainfuckLexer(),
-    "cpp": CppLexer(),
-    "c++": CppLexer(),
-    "css": CssLexer(),
-    "html": HtmlLexer(),
-    "js": JavascriptLexer(),
-    "javascript": JavascriptLexer(),
-    "node": JavascriptLexer(),
-    "java": JavaLexer(),
-    "md": MarkdownLexer(),
-    "markdown": MarkdownLexer(),
-    "c": CLexer(),
-}
 
 # :)
 # c-m = enter.
@@ -263,7 +245,10 @@ def getReadableTime(timestamp):
     return readableTime
 
 def playNotification():
-    playsound.playsound("notify.mp3")
+    try:
+        playsound.playsound("notify.mp3")
+    except:
+        pass
 
 def show_msg(msg):
     print(f"{cursorUp(1)}{msg}\n")
@@ -389,11 +374,20 @@ def main():
                         coloredUser = f"{DEFAULTCOLOR}{user}{COLORS.RESET}"
                     case "me":
                         coloredUser = f"{COLORME}{user}{COLORS.RESET}"
-                isCodeBlock = bool( getCode.search(text) )
-                if isCodeBlock:
-                        codeBlockLang = getCode.search(text).group(1)
-                        codeBlockCode = getCode.search(text).group(2)
-                        text = f"\n{getFormattedCode(codeBlockLang, codeBlockCode, mySyntaxStyle)}"
+                #isCodeBlock = bool( getCode.search(text) )
+                #if isCodeBlock:
+                #        codeBlockLang = getCode.search(text).group(1)
+                #        codeBlockCode = getCode.search(text).group(2)
+                #        text = f"\n{getFormattedCode(codeBlockLang, codeBlockCode, mySyntaxStyle)}"
+                codeBlockMatches = getCode.findall(text)
+                for block in codeBlockMatches:
+                    codeBlockLang = block[0]
+                    codeBlockCode = block[1]
+                    currentCode = getFormattedCode(codeBlockLang, codeBlockCode, mySyntaxStyle)
+                    text = text.replace(f"```{codeBlockLang}", '', 1).strip()
+                    text = text.replace("```", '', 1).strip()
+                    text = text.replace(codeBlockCode, currentCode, 1).strip()
+                    text = f"\n{text}"
                 if trip != None:
                     show_msg(f"|{getReadableTime(timestamp)}| <{trip}> {coloredUser}: {text}")
                 else:
