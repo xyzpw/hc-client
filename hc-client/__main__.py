@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+#
+# Version:  3.0.1
 
 import websocket
 import json
@@ -33,7 +35,7 @@ allSyntaxStyles = list(get_all_styles())
 
 getCode = re.compile(r"^`{3}([\w]*)\n([\S\s]+?)\n`{3}$")
 
-def getFormattedCode(lang="python", code=None, style="vim"):
+def getFormattedCode(lang="python", code=None, style="monokai"):
     langInLangs = lang in langs
     syntaxExists = style in allSyntaxStyles
     if langInLangs and syntaxExists:
@@ -143,7 +145,7 @@ def checkConfig():
     modColor => color of moderators: red, green, blue, yellow, magenta, white, cyan (must be lowercase)
     adminColor => color of admin: red, green, blue, yellow, magenta, white, cyan (must be lowercase)
     colorMe => color of self: red, green, blue, yellow, magenta, white, cyan (must be lowercase)
-    mySyntaxStyle (default=material) => syntax style of code
+    mySyntaxStyle (default=monokai) => syntax style of code
     """
     global config, DONOTSAY, ignoreConfigWarnings, blockedUserReplaceText, blockedUsers, ADMINCOLOR, MODCOLOR, DEFAULTCOLOR, COLORME, mySyntaxStyle
     if config == {}:
@@ -188,7 +190,7 @@ def checkConfig():
                 case "me":
                     COLORME = getColor(val)
 
-        mySyntaxStyle = config.get("mySyntaxStyle") if config.get("mySyntaxStyle") != None else "material"
+        mySyntaxStyle = config.get("mySyntaxStyle") if config.get("mySyntaxStyle") != None else "monokai"
         config["mySyntaxStyle"] = mySyntaxStyle
 
 class COLORS:
