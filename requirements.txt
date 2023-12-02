@@ -2,3 +2,4 @@ playsound
 websocket-client
 colorama
 prompt-toolkit
+pygments
