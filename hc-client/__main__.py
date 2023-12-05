@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Version:  3.1.0
+# Version:  3.2.0
 
 import websocket
 import json
@@ -110,7 +110,9 @@ def getColor(colorName):
             return COLORS.LIGHTMAGENTA
         case "lightcyan":
             return COLORS.LIGHTCYAN
-    return COLORS.BLUE
+        case "reset":
+            return COLORS.RESET
+    return COLORS.RESET
 
 def checkConfig():
     """
@@ -207,7 +209,7 @@ chatCommands = {
     "unblock": "Usage: --unblock <user>\nRemoves specified user from block list",
     "blocklist": "Returns a list of blocked users",
     "showblocked": "Same as blocklist",
-    "color": "Usage: --color (admin | mod | user | me) (red | blue | green | yellow | magenta | white | cyan)\nChanges the color of users. You can use light colors by adding \"light\" in front, e.g. lightred",
+    "color": "Usage: --color [text] (admin | mod | user | me) (red | blue | green | yellow | magenta | white | cyan)\nChanges the color of users or text. You can use light colors by adding \"light\" in front, e.g. lightred",
     "syntaxstyle": "Usage: --syntaxstyle <style>\nChanges syntax style of highlighted code",
     "config": "Returns the users config (some results may be limited)",
 }
@@ -277,6 +279,24 @@ def showHelp(command=None):
         else:
             print_cmdResponse(f"Command not found: {command}", error=True)
 
+def browserStyle(text, initialColor, resetColorAfterHighlight=True):
+    text = re.sub("(__(.*?)__)", "\x1b[1m\\2\x1b[22m", text)
+    text = re.sub("(\*\*(.*?)\*\*)", "\x1b[1m\\2\x1b[22m", text)
+    text = re.sub("(~~(.*?)~~)", "\x1b[9m\\2\x1b[29m", text)
+    if resetColorAfterHighlight:
+        text = re.sub("(\=\=(.*?)\=\=)", f"{colorama.Back.GREEN}{getColor('black')}\\2{colorama.Back.RESET}{getColor('reset')}", text)
+    else:
+        text = re.sub("(\=\=(.*?)\=\=)", f"{colorama.Back.GREEN}{getColor('black')}\\2{colorama.Back.RESET}{getColor(initialColor)}", text)
+    return text
+
+def makeColorful(text, color):
+    if color == None:
+        return text
+    colorName = getColor(color)
+    resetCode = getColor("reset")
+    coloredText = f"{colorName}{text}{resetCode}"
+    return coloredText
+
 try:
     useConfigName = args.get("_nick") == None and config.get("nick") != None
     useConfigChannel = args.get("_channel") == None and config.get("channel") != None
@@ -332,6 +352,9 @@ def main():
                 else:
                     print(COLORS.GREEN, end='')
                     show_msg(f"|{getReadableTime(timestamp)}| <{trip}> * {text}")
+                    print(COLORS.RESET, end='')
+                if NOTIFY:
+                    playNotification()
             case 'warn':
                 text = data['text']
                 print(COLORS.RED, end='')
@@ -367,18 +390,21 @@ def main():
                 uType = getUserType(data['level']) if isMe == False else "me"
                 match uType:
                     case 'admin':
-                        coloredUser = f"{ADMINCOLOR}{user}{COLORS.RESET}"
+                        coloredUser = makeColorful(user, ADMINCOLOR)
+                        coloredText = makeColorful(text, ADMINTEXTCOLOR)
+                        colorBeforeHighlight = ADMINTEXTCOLOR
                     case 'moderator':
-                        coloredUser = f"{MODCOLOR}{user}{COLORS.RESET}"
+                        coloredUser = makeColorful(user, MODCOLOR)
+                        coloredText = makeColorful(text, MODTEXTCOLOR)
+                        colorBeforeHighlight = MODTEXTCOLOR
                     case 'default':
-                        coloredUser = f"{DEFAULTCOLOR}{user}{COLORS.RESET}"
+                        coloredUser = makeColorful(user, DEFAULTCOLOR)
+                        coloredText = makeColorful(text, DEFAULTTEXTCOLOR)
+                        colorBeforeHighlight = DEFAULTTEXTCOLOR
                     case "me":
-                        coloredUser = f"{COLORME}{user}{COLORS.RESET}"
-                #isCodeBlock = bool( getCode.search(text) )
-                #if isCodeBlock:
-                #        codeBlockLang = getCode.search(text).group(1)
-                #        codeBlockCode = getCode.search(text).group(2)
-                #        text = f"\n{getFormattedCode(codeBlockLang, codeBlockCode, mySyntaxStyle)}"
+                        coloredUser = makeColorful(user, COLORME)
+                        coloredText = makeColorful(text, TEXTCOLORME)
+                        colorBeforeHighlight = TEXTCOLORME
                 codeBlockMatches = getCode.findall(text)
                 for block in codeBlockMatches:
                     codeBlockLang = block[0]
@@ -388,10 +414,12 @@ def main():
                     text = text.replace("```", '', 1).strip()
                     text = text.replace(codeBlockCode, currentCode, 1).strip()
                     text = f"\n{text}"
+                if bool(codeBlockMatches) == False:
+                    coloredText = browserStyle(coloredText, initialColor=colorBeforeHighlight, resetColorAfterHighlight=False)
                 if trip != None:
-                    show_msg(f"|{getReadableTime(timestamp)}| <{trip}> {coloredUser}: {text}")
+                    show_msg(f"|{getReadableTime(timestamp)}| <{trip}> {coloredUser}: {coloredText}")
                 else:
-                    show_msg(f"|{getReadableTime(timestamp)}| {coloredUser}: {text}")
+                    show_msg(f"|{getReadableTime(timestamp)}| {coloredUser}: {coloredText}")
                 if NOTIFY and isMe == False and ignoreUser == False:
                     playNotification()
 
@@ -423,10 +451,10 @@ blockedUsers = []
 ignoreConfigWarnings = False
 blockedUserReplaceText = "{TEXT REMOVED}"
 
-MODCOLOR = COLORS.GREEN
-ADMINCOLOR = COLORS.RED
-DEFAULTCOLOR = COLORS.BLUE
-COLORME = DEFAULTCOLOR
+MODCOLOR, MODTEXTCOLOR = "green", None
+ADMINCOLOR, ADMINTEXTCOLOR = "red", None
+DEFAULTCOLOR, DEFAULTTEXTCOLOR = "blue", None
+COLORME, TEXTCOLORME = "blue", None
 
 mySyntaxStyle = "monokai"
 
@@ -437,17 +465,25 @@ try:
 except Exception as ERROR:
     exit("Error setting config: {}".format(ERROR))
 
+exitAttempt = False
 while True:
     try:
+        myText = ''
         with prompt_toolkit.patch_stdout.patch_stdout(raw=True):
             uiCompleter = prompt_toolkit.completion.WordCompleter(nickTags, match_middle=False, ignore_case=True, sentence=True)
             myText = uiSession.prompt(completer=uiCompleter, wrap_lines=False, multiline=True, key_bindings=bindings)
             if myText == None: myText = ''
             print(cursorUp(2), cursorClear())
-            #myText = myText.replace('--nl', '\n') # (depricated) use ctrl+n for newline
-    except (KeyboardInterrupt, EOFError):
-        print("Terminating script...")
-        exit()
+            exitAttempt = False
+    except (KeyboardInterrupt, EOFError) as ERROR:
+        if type(ERROR).__name__ == "KeyboardInterrupt":
+            if exitAttempt:
+                print("Terminating script...")
+                exit()
+            exitAttempt = True
+            print("Press ^C again to exit")
+        else:
+            exit()
     if DONOTSAY != []:
         for word in DONOTSAY:
             if word in myText:
@@ -587,11 +623,14 @@ while True:
                     print_cmdResponse(safeConfig)
             case "--color":
                 colorList = "(red|blue|green|yellow|magenta|white|black|cyan|lightred|lightblue|lightgreen|lightyellow|lightmagenta|lightcyan)"
-                properInputChecker = re.compile(f"^--color (admin|mod|user|default|me) {colorList}$")
-                isProperInput = bool(properInputChecker.search(myText))
-                if isProperInput:
-                    groupToColor = properInputChecker.search(myText).group(1)
-                    colorToUse = getColor( properInputChecker.search(myText).group(2) )
+                textColorList = colorList.replace(')', '|reset)')
+                reUserColor = re.compile(f"^--color (admin|mod|user|default|me) {colorList}$")
+                reUserTextColor = re.compile(f"^--color text (admin|mod|user|default|me) {textColorList}$")
+                isUserColor = bool(reUserColor.search(myText))
+                isTextColor = bool(reUserTextColor.search(myText))
+                if isUserColor:
+                    groupToColor = reUserColor.search(myText).group(1)
+                    colorToUse = reUserColor.search(myText).group(2)
                     match groupToColor:
                         case "admin":
                             ADMINCOLOR = colorToUse
@@ -601,6 +640,19 @@ while True:
                             DEFAULTCOLOR = colorToUse
                         case "me":
                             COLORME = colorToUse
+                    print_cmdResponse("New color set")
+                elif isTextColor:
+                    groupToColor = reUserTextColor.search(myText).group(1)
+                    colorToUse = reUserTextColor.search(myText).group(2)
+                    match groupToColor:
+                        case "admin":
+                            ADMINTEXTCOLOR = colorToUse
+                        case "mod":
+                            MODTEXTCOLOR = colorToUse
+                        case "user" | "default":
+                            DEFAULTTEXTCOLOR = colorToUse
+                        case "me":
+                            TEXTCOLORME = colorToUse
                     print_cmdResponse("New color set")
                 else:
                     print_cmdResponse("Incorrect usage. See help for more info", error=True)
