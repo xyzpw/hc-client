@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-#
-# Version:  3.2.0
 
 import websocket
 import json
@@ -345,6 +343,11 @@ def main():
             case 'info':
                 text = data['text']
                 trip = data.get("trip")
+                _from = data.get("from")
+                isWhisper = data.get("type") == "whisper"
+                ignoreUser = _from in blockedUsers or trip == None
+                if _from in blockedUsers and trip != None:
+                    text = "{TEXT REMOVED}"
                 if trip == None:
                     print(COLORS.GREEN, end='')
                     show_msg(f"|{getReadableTime(timestamp)}| * {text}")
@@ -353,7 +356,7 @@ def main():
                     print(COLORS.GREEN, end='')
                     show_msg(f"|{getReadableTime(timestamp)}| <{trip}> * {text}")
                     print(COLORS.RESET, end='')
-                if NOTIFY:
+                if NOTIFY and ignoreUser == False:
                     playNotification()
             case 'warn':
                 text = data['text']
@@ -413,7 +416,7 @@ def main():
                     text = text.replace(f"```{codeBlockLang}", '', 1).strip()
                     text = text.replace("```", '', 1).strip()
                     text = text.replace(codeBlockCode, currentCode, 1).strip()
-                    text = f"\n{text}"
+                    coloredText = f"\n{text}"
                 if bool(codeBlockMatches) == False:
                     coloredText = browserStyle(coloredText, initialColor=colorBeforeHighlight, resetColorAfterHighlight=False)
                 if trip != None:
@@ -422,6 +425,9 @@ def main():
                     show_msg(f"|{getReadableTime(timestamp)}| {coloredUser}: {coloredText}")
                 if NOTIFY and isMe == False and ignoreUser == False:
                     playNotification()
+            case "captcha":
+                uiSession.app.exit()
+                exit()
 
 DONOTSAY = []
 ws = websocket.WebSocket()
@@ -484,6 +490,8 @@ while True:
             print("Press ^C again to exit")
         else:
             exit()
+    except:
+        exit()
     if DONOTSAY != []:
         for word in DONOTSAY:
             if word in myText:
