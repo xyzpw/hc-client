@@ -196,8 +196,7 @@ def cursorUp(unit): return f'\033[{unit}A'
 def cursorDown(unit): return f'\033[{unit}B'
 def cursorLeft(unit): return f'\033[{unit}D'
 def cursorRight(unit): return f'\033[{unit}C'
-#def cursorClear(): return '\033[A'
-def cursorClear(): return '\033[2K' # moves cursor to beginning
+def cursorClear(): return '\033[2K'
 
 chatCommands = {
     "help": "Usage: --help [command]\nShows this message or usage of other commands if specified",
@@ -210,6 +209,7 @@ chatCommands = {
     "color": "Usage: --color [text] (admin | mod | user | me) (red | blue | green | yellow | magenta | white | cyan)\nChanges the color of users or text. You can use light colors by adding \"light\" in front, e.g. lightred",
     "syntaxstyle": "Usage: --syntaxstyle <style>\nChanges syntax style of highlighted code",
     "config": "Returns the users config (some results may be limited)",
+    "nl": "Prints a few newlines to the screen. Nothing more",
 }
 
 NOTIFY = False
@@ -228,7 +228,7 @@ levels = {
     "ChannelTrusted": 8999,
 
     "trustedUser": 500,
-    "default": 100
+    "default": 100,
 }
 
 def getUserType(level):
@@ -278,9 +278,13 @@ def showHelp(command=None):
             print_cmdResponse(f"Command not found: {command}", error=True)
 
 def browserStyle(text, initialColor, resetColorAfterHighlight=True):
+    # some terminals don't have support for these
     text = re.sub("(__(.*?)__)", "\x1b[1m\\2\x1b[22m", text)
+    text = re.sub("(\_(.*?)\_)", "\x1b[3m\\2\x1b[23m", text)
     text = re.sub("(\*\*(.*?)\*\*)", "\x1b[1m\\2\x1b[22m", text)
+    text = re.sub("(\*(.*?)\*)", "\x1b[3m\\2\x1b[23m", text)
     text = re.sub("(~~(.*?)~~)", "\x1b[9m\\2\x1b[29m", text)
+    text = re.sub(r"\.{3,}", "...", text)
     if resetColorAfterHighlight:
         text = re.sub("(\=\=(.*?)\=\=)", f"{colorama.Back.GREEN}{getColor('black')}\\2{colorama.Back.RESET}{getColor('reset')}", text)
     else:
@@ -312,8 +316,11 @@ except (KeyboardInterrupt, EOFError):
 except Exception as ERROR:
     exit("Error received: {}".format(ERROR))
 
+messagesToUpdate = {}
+userIds = {}
+messageIds = {}
 def main():
-    global nickTags
+    global nickTags, messagesToUpdate, userIds, messageIds
     while ws.connected:
         data = json.loads(ws.recv())
         cmd = data['cmd']
@@ -321,8 +328,13 @@ def main():
         match cmd:
             case 'onlineSet':
                 nicks = data['nicks']
+                users = data["users"]
                 for i in nicks:
                     nickTags.append(f"@{i}")
+                for i in users:
+                    _id = i.get("userid")
+                    _name = i.get("nick")
+                    userIds[_id] = _name
                 print(COLORS.GREEN, end='')
                 show_msg(f"* Users online: {', '.join(nicks)}\n")
                 print(COLORS.RESET, end='')
@@ -384,6 +396,9 @@ def main():
                 user = data['nick']
                 trip = data.get("trip")
                 isMe = str(user) == str(nick)
+                if data.get("customId") != None:
+                    customId = data.get("customId")
+                    messageIds[customId] = {"text": data.get("text"), "timestamp": timestamp}
                 coloredUser = user
                 ignoreUser = user in blockedUsers
                 if ignoreUser:
@@ -425,6 +440,56 @@ def main():
                     show_msg(f"|{getReadableTime(timestamp)}| {coloredUser}: {coloredText}")
                 if NOTIFY and isMe == False and ignoreUser == False:
                     playNotification()
+            case "updateMessage":
+                text = data.get("text")
+                userId = data.get("userid")
+                mode = data.get("mode")
+                customId = data.get("customId")
+                match mode:
+                    case "append":
+                        messageIds[customId]["text"] += text
+                    case "overwrite":
+                        messageIds[customId]["text"] = text
+                    case "complete":
+                        isMe = userIds[userId] == str(nick)
+                        lastText = text
+                        messageIds[customId]["text"] += lastText
+                        user = userIds[userId]
+                        uType = getUserType(data.get("level")) if isMe == False else "me"
+                        textToSend = messageIds[customId]["text"]
+                        match uType:
+                            case "admin":
+                                coloredUser = makeColorful(user, ADMINCOLOR)
+                                coloredText = makeColorful(textToSend, ADMINTEXTCOLOR)
+                                colorBeforeHighlight = ADMINTEXTCOLOR
+                            case "moderator":
+                                coloredUser = makeColorful(user, MODCOLOR)
+                                coloredText = makeColorful(textToSend, MODTEXTCOLOR)
+                                colorBeforeHighlight = MODTEXTCOLOR
+                            case "default":
+                                coloredUser = makeColorful(user, DEFAULTCOLOR)
+                                coloredText = makeColorful(textToSend, DEFAULTTEXTCOLOR)
+                                colorBeforeHighlight = DEFAULTTEXTCOLOR
+                            case "me":
+                                coloredUser = makeColorful(user, COLORME)
+                                coloredText = makeColorful(textToSend, TEXTCOLORME)
+                                colorBeforeHighlight = TEXTCOLORME
+                        codeBlockMatches = getCode.findall(textToSend)
+                        for block in codeBlockMatches:
+                            codeBlockLang = block[0]
+                            codeBlockCode = block[1]
+                            currentCode = getFormattedCode(codeBlockLang, codeBlockCode, mySyntaxStyle)
+                            textToSend = textToSend.replace(f"```{codeBlockLang}", '', 1).strip()
+                            textToSend = textToSend.replace("```", '', 1).strip()
+                            textToSend = textToSend.replace(codeBlockCode, currentCode, 1).strip()
+                            coloredText = f"\n{textToSend}"
+                        if bool(codeBlockMatches) == False:
+                            coloredText = browserStyle(coloredText, initialColor=colorBeforeHighlight, resetColorAfterHighlight=False)
+                        initialMsgTimestamp = messageIds[customId]["timestamp"]
+                        show_msg(f"|{getReadableTime(initialMsgTimestamp)}| {coloredUser}: {coloredText}")
+                        del(messageIds[customId])
+                        if NOTIFY and user not in blockedUsers:
+                            playNotification()
             case "captcha":
                 uiSession.app.exit()
                 exit()
@@ -689,6 +754,9 @@ while True:
                     print_cmdResponse("New style set")
                 else:
                     print_cmdResponse("Invalid style", error=True)
+            case "--nl":
+                # that's all :-)
+                print_cmdResponse("")
             case "--help":
                 if myText == "--help":
                     showHelp()
