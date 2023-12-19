@@ -126,11 +126,12 @@ def checkConfig():
     modColor => color of moderators: red, green, blue, yellow, magenta, white, cyan (must be lowercase)
     adminColor => color of admin: red, green, blue, yellow, magenta, white, cyan (must be lowercase)
     colorMe => color of self: red, green, blue, yellow, magenta, white, cyan (must be lowercase)
+    botColor => color of bots: red, green, blue, yellow, magenta, white, cyan (must be lowercase)
     mySyntaxStyle (default=monokai) => syntax style of code
     botlist => list of bots in an array, e.g. ["nick1", "nick2"]
     notifymention (default=1) => play notification when @mentioned
     """
-    global config, DONOTSAY, ignoreConfigWarnings, blockedUserReplaceText, blockedUsers, ADMINCOLOR, MODCOLOR, DEFAULTCOLOR, COLORME, mySyntaxStyle, botlist, NOTIFYMENTION
+    global config, DONOTSAY, ignoreConfigWarnings, blockedUserReplaceText, blockedUsers, ADMINCOLOR, MODCOLOR, DEFAULTCOLOR, COLORME, BOTCOLOR, mySyntaxStyle, botlist, NOTIFYMENTION
     if config == {}:
         return
     else:
@@ -158,6 +159,7 @@ def checkConfig():
             "mod": config.get("modColor"),
             "default": config.get("userColor"),
             "me": config.get("colorMe"),
+            "bot": config.get("botColor"),
         }
 
         for key, val in configColors.items():
@@ -165,13 +167,15 @@ def checkConfig():
                 continue
             match key:
                 case "admin":
-                    ADMINCOLOR = getColor(val)
+                    ADMINCOLOR = config.get("adminColor")
                 case "mod":
-                    MODCOLOR = getColor(val)
+                    MODCOLOR = config.get("modColor")
                 case "default":
-                    DEFAULTCOLOR = getColor(val)
+                    DEFAULTCOLOR = config.get("userColor")
                 case "me":
-                    COLORME = getColor(val)
+                    COLORME = config.get("colorMe")
+                case "bot":
+                    BOTCOLOR = config.get("botColor")
 
         mySyntaxStyle = config.get("mySyntaxStyle") if config.get("mySyntaxStyle") != None else "monokai"
         config["mySyntaxStyle"] = mySyntaxStyle
