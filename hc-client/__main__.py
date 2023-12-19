@@ -31,7 +31,6 @@ uiSession = prompt_toolkit.PromptSession()
 
 allSyntaxStyles = list(get_all_styles())
 
-#getCode = re.compile(r"^`{3}([\w]*)\n([\S\s]+?)\n`{3}$") # v3.0.1
 getCode = re.compile(r"```(?P<lang>\w+)?\n(?P<code>.*?)\n```", re.DOTALL)
 
 def getFormattedCode(lang="python", code="", style="monokai"):
@@ -128,8 +127,10 @@ def checkConfig():
     adminColor => color of admin: red, green, blue, yellow, magenta, white, cyan (must be lowercase)
     colorMe => color of self: red, green, blue, yellow, magenta, white, cyan (must be lowercase)
     mySyntaxStyle (default=monokai) => syntax style of code
+    botlist => list of bots in an array, e.g. ["nick1", "nick2"]
+    notifymention (default=1) => play notification when @mentioned
     """
-    global config, DONOTSAY, ignoreConfigWarnings, blockedUserReplaceText, blockedUsers, ADMINCOLOR, MODCOLOR, DEFAULTCOLOR, COLORME, mySyntaxStyle
+    global config, DONOTSAY, ignoreConfigWarnings, blockedUserReplaceText, blockedUsers, ADMINCOLOR, MODCOLOR, DEFAULTCOLOR, COLORME, mySyntaxStyle, botlist, NOTIFYMENTION
     if config == {}:
         return
     else:
@@ -174,6 +175,8 @@ def checkConfig():
 
         mySyntaxStyle = config.get("mySyntaxStyle") if config.get("mySyntaxStyle") != None else "monokai"
         config["mySyntaxStyle"] = mySyntaxStyle
+        botlist = config.get("botlist") if config.get("botlist") != None else []
+        if config.get("notifymention") == '0': NOTIFYMENTION = False
 
 class COLORS:
     RED = colorama.Fore.RED
@@ -199,17 +202,22 @@ def cursorRight(unit): return f'\033[{unit}C'
 def cursorClear(): return '\033[2K'
 
 chatCommands = {
-    "help": "Usage: --help [command]\nShows this message or usage of other commands if specified",
-    "clear": "Clears the screen",
-    "notify": "Plays notify.mp3 if a message is received",
-    "block": "Usage: --block <user>\nBlocks a user",
-    "unblock": "Usage: --unblock <user>\nRemoves specified user from block list",
-    "blocklist": "Returns a list of blocked users",
-    "showblocked": "Same as blocklist",
-    "color": "Usage: --color [text] (admin | mod | user | me) (red | blue | green | yellow | magenta | white | cyan)\nChanges the color of users or text. You can use light colors by adding \"light\" in front, e.g. lightred",
-    "syntaxstyle": "Usage: --syntaxstyle <style>\nChanges syntax style of highlighted code",
-    "config": "Returns the users config (some results may be limited)",
-    "nl": "Prints a few newlines to the screen. Nothing more",
+    "help": "Usage: --help [command]\nShows this message or usage of other commands if specified.",
+    "clear": "Clears the screen.",
+    "notify": "Usage: --notify [mention] [(on | off)]\nEnables/disables notifications. Using mention will notify you when someone @mentions you.",
+    "block": "Usage: --block (user...)\nBlocks a user.",
+    "unblock": "Usage: --unblock (user...)\nRemoves specified user from block list.",
+    "blocklist": "Returns a list of blocked users.",
+    "showblocked": "Same as blocklist.",
+    "color": "Usage: --color [text] (admin | mod | user | bot | me) (red | blue | green | yellow | magenta | white | cyan)\nChanges the color of users or text. You can use light colors by adding \"light\" in front, e.g. lightred.",
+    "syntaxstyle": "Usage: --syntaxstyle [style]\nChanges syntax style of highlighted code.",
+    "config": "Returns the users config (some results may be limited).",
+    "nl": "Prints a few newlines to the screen. Nothing more.",
+    "mentions": "Makes @mentions colored.",
+    "browserstyle": "Usage: --browserstyle [(on | off)]\nEnables/disables browser style text.",
+    "addbot": "Usage: --addbot (nick...)\nTells script that this nick is a bot. Ignores mention notifications and has own color group.",
+    "removebot": "Usage: --removebot (nick...)\nRemove users from botlist.",
+    "botlist": "Usage: --botlist\nShows all users in botlist.",
 }
 
 NOTIFY = False
@@ -299,6 +307,18 @@ def makeColorful(text, color):
     coloredText = f"{colorName}{text}{resetCode}"
     return coloredText
 
+def coloredMention(text):
+    mentionedUsers = re.findall("(?!\b)(@\w+)", text)
+    if bool(mentionedUsers):
+        for mentiondUser in mentionedUsers:
+            text = text.replace(mentiondUser, f"{colorama.Back.BLUE}{mentiondUser}{colorama.Back.RESET}")
+    return text
+
+def onoffSwitch(requestedStatus, currentStatus):
+    if requestedStatus != currentStatus:
+        return True
+    return False
+
 try:
     useConfigName = args.get("_nick") == None and config.get("nick") != None
     useConfigChannel = args.get("_channel") == None and config.get("channel") != None
@@ -319,6 +339,27 @@ except Exception as ERROR:
 messagesToUpdate = {}
 userIds = {}
 messageIds = {}
+
+def updateMessageTimer():
+    global messagesToUpdate
+    while True:
+        time.sleep(180)
+        timestamp = time.time() // 1
+        if messagesToUpdate != {}:
+            for msgKey in list(messagesToUpdate.keys()):
+                msgTimestamp = messagesToUpdate[msgKey].get("timestamp")
+                if timestamp - int(msgTimestamp) >= 180:
+                    user = messagesToUpdate[msgKey].get("nick")
+                    trip = messagesToUpdate[msgKey].get("trip")
+                    text = messagesToUpdate[msgKey].get("text")
+                    expiredWarningUser = makeColorful(user, "yellow")
+                    expireWarningText = makeColorful(text, "yellow")
+                    if trip == None: trip = "null"
+                    del(messagesToUpdate[msgKey])
+                    show_msg(f"EXPIRED |{getReadableTime(msgTimestamp)}| <{trip}> {expiredWarningUser}: {expireWarningText}")
+                else:
+                    pass
+
 def main():
     global nickTags, messagesToUpdate, userIds, messageIds
     while ws.connected:
@@ -342,6 +383,7 @@ def main():
                 user = data['nick']
                 nicks.append(user)
                 nickTags.append(f"@{user}")
+                userIds[data.get("userid")] = user
                 print(COLORS.GREEN, end='')
                 show_msg(f"|{getReadableTime(timestamp)}| * @{user} joined")
                 print(COLORS.RESET, end='')
@@ -349,6 +391,7 @@ def main():
                 user = data['nick']
                 nicks.remove(user)
                 nickTags.remove(f"@{user}")
+                del userIds[data.get("userid")]
                 print(COLORS.GREEN, end='')
                 show_msg(f"|{getReadableTime(timestamp)}| * @{user} left")
                 print(COLORS.RESET, end='')
@@ -396,15 +439,23 @@ def main():
                 user = data['nick']
                 trip = data.get("trip")
                 isMe = str(user) == str(nick)
-                if data.get("customId") != None:
-                    customId = data.get("customId")
-                    messageIds[customId] = {"text": data.get("text"), "timestamp": timestamp}
                 coloredUser = user
                 ignoreUser = user in blockedUsers
+                isBot = user in botlist
                 if ignoreUser:
                     text = blockedUserReplaceText
                 else:
                     text = data['text']
+                if data.get("customId") != None and ignoreUser == False:
+                    customId = data.get("customId")
+                    messageIds[customId] = {"text": data.get("text"), "timestamp": timestamp}
+                    messagesToUpdate[customId] = {
+                        "nick": data.get("nick"),
+                        "trip": data.get("trip"),
+                        "text": data.get("text"),
+                        "timestamp": timestamp,
+                        "expired": "false",
+                    }
                 uType = getUserType(data['level']) if isMe == False else "me"
                 match uType:
                     case 'admin':
@@ -423,6 +474,10 @@ def main():
                         coloredUser = makeColorful(user, COLORME)
                         coloredText = makeColorful(text, TEXTCOLORME)
                         colorBeforeHighlight = TEXTCOLORME
+                if isBot and isMe == False:
+                    coloredUser = makeColorful(user, BOTCOLOR)
+                    coloredText = makeColorful(text, BOTTEXTCOLOR)
+                    colorBeforeHighlight = BOTTEXTCOLOR
                 codeBlockMatches = getCode.findall(text)
                 for block in codeBlockMatches:
                     codeBlockLang = block[0]
@@ -432,13 +487,17 @@ def main():
                     text = text.replace("```", '', 1).strip()
                     text = text.replace(codeBlockCode, currentCode, 1).strip()
                     coloredText = f"\n{text}"
-                if bool(codeBlockMatches) == False:
+                if COLOREDMENTIONS:
+                    coloredText = coloredMention(coloredText)
+                if bool(codeBlockMatches) == False and BROWSERSTYLE:
                     coloredText = browserStyle(coloredText, initialColor=colorBeforeHighlight, resetColorAfterHighlight=False)
                 if trip != None:
                     show_msg(f"|{getReadableTime(timestamp)}| <{trip}> {coloredUser}: {coloredText}")
                 else:
                     show_msg(f"|{getReadableTime(timestamp)}| {coloredUser}: {coloredText}")
                 if NOTIFY and isMe == False and ignoreUser == False:
+                    playNotification()
+                if bool(re.search(f"@{nick}\\b", text)) and NOTIFYMENTION and isMe == False and isBot == False:
                     playNotification()
             case "updateMessage":
                 text = data.get("text")
@@ -448,15 +507,20 @@ def main():
                 match mode:
                     case "append":
                         messageIds[customId]["text"] += text
+                        messagesToUpdate[customId]["text"] += text
                     case "overwrite":
                         messageIds[customId]["text"] = text
+                        messagesToUpdate[customId]["text"] = text
                     case "complete":
+                        trip = messagesToUpdate[customId].get("trip")
+                        del(messagesToUpdate[customId])
                         isMe = userIds[userId] == str(nick)
                         lastText = text
                         messageIds[customId]["text"] += lastText
                         user = userIds[userId]
                         uType = getUserType(data.get("level")) if isMe == False else "me"
                         textToSend = messageIds[customId]["text"]
+                        isBot = user in botlist
                         match uType:
                             case "admin":
                                 coloredUser = makeColorful(user, ADMINCOLOR)
@@ -474,6 +538,10 @@ def main():
                                 coloredUser = makeColorful(user, COLORME)
                                 coloredText = makeColorful(textToSend, TEXTCOLORME)
                                 colorBeforeHighlight = TEXTCOLORME
+                        if isBot and isMe == False:
+                            coloredUser = makeColorful(user, BOTCOLOR)
+                            coloredText = makeColorful(textToSend, BOTTEXTCOLOR)
+                            colorBeforeHighlight = BOTTEXTCOLOR
                         codeBlockMatches = getCode.findall(textToSend)
                         for block in codeBlockMatches:
                             codeBlockLang = block[0]
@@ -486,9 +554,13 @@ def main():
                         if bool(codeBlockMatches) == False:
                             coloredText = browserStyle(coloredText, initialColor=colorBeforeHighlight, resetColorAfterHighlight=False)
                         initialMsgTimestamp = messageIds[customId]["timestamp"]
-                        show_msg(f"|{getReadableTime(initialMsgTimestamp)}| {coloredUser}: {coloredText}")
+                        if trip == None:
+                            trip = "null"
+                        show_msg(f"|{getReadableTime(initialMsgTimestamp)}| <{trip}> {coloredUser}: {coloredText}")
                         del(messageIds[customId])
                         if NOTIFY and user not in blockedUsers:
+                            playNotification()
+                        if NOTIFYMENTION and NOTIFY == False and user not in blockedUsers and isBot == False:
                             playNotification()
             case "captcha":
                 uiSession.app.exit()
@@ -515,6 +587,8 @@ except Exception as ERROR:
 
 p = threading.Thread(target=main, daemon=True)
 p.start()
+expiredMessageListener = threading.Thread(target=updateMessageTimer, daemon=True)
+expiredMessageListener.start()
 
 nickTags = []
 blockedUsers = []
@@ -526,6 +600,11 @@ MODCOLOR, MODTEXTCOLOR = "green", None
 ADMINCOLOR, ADMINTEXTCOLOR = "red", None
 DEFAULTCOLOR, DEFAULTTEXTCOLOR = "blue", None
 COLORME, TEXTCOLORME = "blue", None
+COLOREDMENTIONS = True
+NOTIFYMENTION = True
+BROWSERSTYLE = True
+BOTCOLOR, BOTTEXTCOLOR = "blue", None
+botlist = []
 
 mySyntaxStyle = "monokai"
 
@@ -594,35 +673,59 @@ while True:
             case "--clear":
                 clear()
             case "--notify":
-                notifyAction = 'status'
-                if ' ' in myText:
-                    notifyArg = myText.replace("--notify ", '').strip()
-                    if notifyArg == "on":
-                        notifyAction = "enable"
-                    elif notifyArg == "off":
-                        notifyAction = "disable"
-                match notifyAction:
-                    case "enable":
-                        if NOTIFY:
-                            print_cmdResponse("Notifications are already enabled", error=True)
-                        else:
-                            NOTIFY = True
-                            print_cmdResponse("Notifications enabled")
-                    case "disable":
-                        if NOTIFY:
-                            NOTIFY = False
-                            print_cmdResponse("Notifications disabled")
-                        else:
-                            print_cmdResponse(f"Notifications are already disabled", error=True)
-                    case "status":
-                        print_cmdResponse(f"Notification status: {NOTIFY}")
+                if myText == "--notify":
+                    print_cmdResponse(f"Notification status: {NOTIFY}")
+                    continue
+                elif myText == "--notify mention":
+                    print_cmdResponse(f"Mention notification status: {NOTIFYMENTION}")
+                    continue
+                notifyPattern = re.compile("^--notify (?P<mention>(?:mention)?)(\s)?(?P<action>(on|off|status))$")
+                if bool(notifyPattern.search(myText)):
+                    notifyAction = notifyPattern.search(myText).group("action")
+                    isMention = bool(notifyPattern.search(myText).group("mention"))
+                    match notifyAction:
+                        case "on":
+                            if isMention:
+                                switchStatus = onoffSwitch(True, NOTIFYMENTION)
+                                if switchStatus:
+                                    NOTIFYMENTION = True
+                                    print_cmdResponse("Mention notifications enabled")
+                                else:
+                                    print_cmdResponse("Mention notifications are already enabled", error=True)
+                            else:
+                                switchStatus = onoffSwitch(True, NOTIFY)
+                                if switchStatus:
+                                    NOTIFY = True
+                                    print_cmdResponse("Notifications enabled")
+                                else:
+                                    print_cmdResponse("Notifications are already enabled", error=True)
+                        case "off":
+                            if isMention:
+                                switchStatus = onoffSwitch(False, NOTIFYMENTION)
+                                if switchStatus:
+                                    NOTIFYMENTION = False
+                                    print_cmdResponse("Mention notifications disabled")
+                                else:
+                                    print_cmdResponse("Mention notifications are already disabled", error=True)
+                            else:
+                                switchStatus = onoffSwitch(False, NOTIFY)
+                                if switchStatus:
+                                    NOTIFY = False
+                                    print_cmdResponse("Notifications disabled")
+                                else:
+                                    print_cmdResponse("Notifications are already disabled", error=True)
+                        case "status":
+                            if isMention:
+                                print_cmdResponse(f"Mention notification status: {NOTIFYMENTION}")
+                            else:
+                                print_cmdResponse(f"Notification status: {NOTIFY}")
             case "--block":
-                properInputChecker = re.compile(r"--block (.*)")
+                properInputChecker = re.compile(r"--block (?P<users>.*)")
                 isProperInput = bool(properInputChecker.search(myText))
                 if isProperInput == False:
                     showHelp("block")
                     continue
-                targets = properInputChecker.search(myText).group(1).split()
+                targets = properInputChecker.search(myText).group("users").split()
                 if targets == []:
                     showHelp("block")
                     continue
@@ -641,12 +744,12 @@ while True:
                     blockedUsers.append(target)
                     print_cmdResponse(f"Added {target} to blocklist")
             case "--unblock":
-                properInputChecker = re.compile(r"--unblock (.*)")
+                properInputChecker = re.compile(r"--unblock (?P<users>.*)")
                 isProperInput = bool(properInputChecker.search(myText))
                 if isProperInput == False:
                     showHelp("unblock")
                     continue
-                targets = properInputChecker.search(myText).group(1).split()
+                targets = properInputChecker.search(myText).group("users").split()
                 if targets == []:
                     showHelp("unblock")
                 if len(targets) > 1:
@@ -695,15 +798,15 @@ while True:
                     print_cmdResponse("Some keys are not shown. To show all keys, change \"ignoreConfigWarnings\" to 1", warning=True)
                     print_cmdResponse(safeConfig)
             case "--color":
-                colorList = "(red|blue|green|yellow|magenta|white|black|cyan|lightred|lightblue|lightgreen|lightyellow|lightmagenta|lightcyan)"
+                colorList = "(?P<color>red|blue|green|yellow|magenta|white|black|cyan|lightred|lightblue|lightgreen|lightyellow|lightmagenta|lightcyan)"
                 textColorList = colorList.replace(')', '|reset)')
-                reUserColor = re.compile(f"^--color (admin|mod|user|default|me) {colorList}$")
-                reUserTextColor = re.compile(f"^--color text (admin|mod|user|default|me) {textColorList}$")
+                reUserColor = re.compile(f"^--color (?P<group>admin|mod|user|default|bot|me) {colorList}$")
+                reUserTextColor = re.compile(f"^--color text (?P<group>admin|mod|user|default|bot|me) {textColorList}$")
                 isUserColor = bool(reUserColor.search(myText))
                 isTextColor = bool(reUserTextColor.search(myText))
                 if isUserColor:
-                    groupToColor = reUserColor.search(myText).group(1)
-                    colorToUse = reUserColor.search(myText).group(2)
+                    groupToColor = reUserColor.search(myText).group("group")
+                    colorToUse = reUserColor.search(myText).group("color")
                     match groupToColor:
                         case "admin":
                             ADMINCOLOR = colorToUse
@@ -711,12 +814,14 @@ while True:
                             MODCOLOR = colorToUse
                         case "user" | "default":
                             DEFAULTCOLOR = colorToUse
+                        case "bot":
+                            BOTCOLOR = colorToUse
                         case "me":
                             COLORME = colorToUse
                     print_cmdResponse("New color set")
                 elif isTextColor:
-                    groupToColor = reUserTextColor.search(myText).group(1)
-                    colorToUse = reUserTextColor.search(myText).group(2)
+                    groupToColor = reUserTextColor.search(myText).group("group")
+                    colorToUse = reUserTextColor.search(myText).group("color")
                     match groupToColor:
                         case "admin":
                             ADMINTEXTCOLOR = colorToUse
@@ -724,6 +829,8 @@ while True:
                             MODTEXTCOLOR = colorToUse
                         case "user" | "default":
                             DEFAULTTEXTCOLOR = colorToUse
+                        case "bot":
+                            BOTTEXTCOLOR = colorToUse
                         case "me":
                             TEXTCOLORME = colorToUse
                     print_cmdResponse("New color set")
@@ -757,6 +864,70 @@ while True:
             case "--nl":
                 # that's all :-)
                 print_cmdResponse("")
+            case "--mentions":
+                mentionsPattern = re.compile("^--mentions (?P<action>on|off)")
+                if bool(re.search(mentionsPattern, myText)):
+                    mentionOption = re.search(mentionsPattern, myText).group("action")
+                    if mentionOption == "on":
+                        switchStatus = onoffSwitch(True, COLOREDMENTIONS)
+                        if switchStatus:
+                            COLOREDMENTIONS = True
+                            print_cmdResponse("Colored mentions enabled")
+                        else:
+                            print_cmdResponse("Colored mentions are already enabled", error=True)
+                    if mentionOption == "off":
+                        switchStatus = onoffSwitch(False, COLOREDMENTIONS)
+                        if switchStatus:
+                            COLOREDMENTIONS = False
+                            print_cmdResponse("Colored mentions disabled")
+                        else:
+                            print_cmdResponse("Colored mentions are already disabled", error=True)
+                else:
+                    print_cmdResponse("Colored mentions status: {}".format(COLOREDMENTIONS))
+            case "--browserstyle":
+                if myText == "--browserstyle":
+                    print_cmdResponse(f"Browser style status: {BROWSERSTYLE}")
+                    continue
+                browserStylePattern = re.compile("^--browserstyle (?P<action>on|off)$")
+                if bool(re.search(browserStylePattern, myText)):
+                    userAction = re.search(browserStylePattern, myText).group("action")
+                    if userAction == "on":
+                        switchStatus = onoffSwitch(True, BROWSERSTYLE)
+                        if switchStatus:
+                            BROWSERSTYLE = True
+                            print_cmdResponse("Browser style enabled")
+                        else:
+                            print_cmdResponse("Browser style is already enabled", error=True)
+                    elif userAction == "off":
+                        switchStatus = onoffSwitch(False, BROWSERSTYLE)
+                        if switchStatus:
+                            BROWSERSTYLE = False
+                            print_cmdResponse("Browser style disabled")
+                        else:
+                            print_cmdResponse("Browser style is already disabled")
+            case "--addbot":
+                addbotPattern = re.compile("^--addbot (?P<nicks>.*)$")
+                if bool(addbotPattern.search(myText)):
+                    addbotNicks = addbotPattern.search(myText).group("nicks").split()
+                    for bot in addbotNicks:
+                        botlist.append(bot)
+                    print_cmdResponse("Added users to botlist")
+                else:
+                    showHelp("addbot")
+            case "--removebot":
+                removebotPattern = re.compile("^--removebot (?P<nicks>.*)$")
+                if bool(removebotPattern.search(myText)):
+                    removebotNicks = removebotPattern.search(myText).group("nicks").split()
+                    for bot in removebotNicks:
+                        if bot in botlist:
+                            botlist.remove(bot)
+                    botlistStr = ", ".join(botlist)
+                    print_cmdResponse(f"Removed users from botlist, current botlist: {botlistStr}")
+                else:
+                    showHelp("removebot")
+            case "--botlist":
+                botlistStr = ", ".join(botlist)
+                print_cmdResponse(f"Bot list: {botlistStr}")
             case "--help":
                 if myText == "--help":
                     showHelp()
