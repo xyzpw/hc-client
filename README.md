@@ -1,69 +1,72 @@
-# hc-client
-[hack.chat](https://hack.chat/) client for your terminal emulator
+# About hc-client
+A script to connect to [hack.chat](https://hack.chat/) through your terminal.
 
-## Usage
+## Installation
 
-### Installation
+Installation instructions are below. Where you see $FOLDERNAME you must replace it with the folder name of the release installed.<br><br>
+If you are getting execution errors on Linux, you have to add execution perms, you can do this via `chmod +x hc-client.py`.
 
-Installation instructions are below. Where you see $FOLDERNAME you must replace it with the folder name of the release installed.
-
-#### Installing requirements
+### Installing Requirements
 ```bash
 $ cd $FOLDERNAME
 $ pip3 install -r requirements.txt
 ```
 You may have to run `pip3 uninstall websocket` in order to import websocket-client. <br>
 The default websocket module is not the one used for this script, but they are both imported with the same name.
-#### Installation via git
+### Installation via Git
 ```bash
 $ git clone https://github.com/xyzpw/hc-client.git
 $ cd hc-client/
 $ python3 hc-client
 ```
 
-#### Installation via release (tar.gz)
+### Installation via Release (tar.gz)
 ```bash
 $ tar -xf $FOLDERNAME
 $ cd $FOLDERNAME
 $ ./hc-client.py
 ```
 
-#### Installation via release (zip)
+### Installation via Release (zip)
 ```bash
 $ unzip $FOLDERNAME
 $ cd $FOLDERNAME
 $ ./hc-client.py
 ```
 
+# Usage
+Usage and explanations for certain commands.
 ## Commands
 You can run commands in the client by typing "--COMMAND", be sure to replace "COMMAND" with the actual command you want to use. <br>
 Below is a list of all the commands.
 ```yml
-help:          Displays help message
-clear:         Clears the screen
-notify:        Plays a notification when receiving a message
-block:         Blocks a user
-unblock:       Removes a blocked user from the blocklist
-blocklist:     Displays blocklist to screen
-showblocked:   Same as blocklist
-color:         Change color of users' names/text
-syntaxstyle:   Change theme color of highlighted code
-config:        Displays your config
-nl:            Prints a newline
-mentions:      Highlights @mentions
-browserstyle:  Uses browserstyle mode
-addbot:        Adds user to botlist
-removebot:     Removes user from botlist
-botlist:       Displays botlist
+help:          displays help message
+clear:         clears the screen
+notify:        plays a notification when receiving a message
+block:         blocks a user
+unblock:       removes a blocked user from the blocklist
+blocklist:     displays blocklist to screen
+showblocked:   same as blocklist
+color:         change color of users' names/text
+syntaxstyle:   change theme color of highlighted code
+config:        displays your config
+nl:            prints a newline
+mentions:      highlights @mentions
+browserstyle:  uses browserstyle mode
+addbot:        adds user to botlist
+removebot:     removes user from botlist
+botlist:       displays botlist
+stars:         displays stars next to moderators names
+whisperlock:   disables the ability to send any messages other than whispers
 ```
 
 For more information, you can run "--help COMMAND" in client to get usage info.
 
-### multiline
+## Multiline Input
 
-Using Ctrl+n will move your cursor to a newline, using Enter will send the message currently displayed in your input.
+Support for multiline input. During input, use ctrl+n to move a line down, when you want to send the message, press enter.
 
-## config
+## File Config
 The config file can be modified to make the client look how you want on startup.
 The config file name is "hc-client-config.json", modify this file in json format. *example below*
 ```json
@@ -83,12 +86,15 @@ The config file name is "hc-client-config.json", modify this file in json format
         "botColor": "blue",
         "mySyntaxStyle": "monokai",
         "botlist": ["IAmABot", "ImABot"],
-        "notifymention": "1"
+        "notifymention": "1",
+        "notifywhisper": "1",
+        "stars": "1"
 }
 ```
 
-## Preview(s)
+# Preview(s)
 
-Preview is not the latest release.<br>
+Preview of v4 below.
 
-![hc-client-preview2](https://github.com/xyzpw/hc-client/assets/76017734/99213423-f2e3-44b3-9833-f2df0db388cd)
+![hc-client-v4](https://github.com/xyzpw/hc-client/assets/76017734/a80957d6-5d81-49ae-b463-418a6ed99988)
+
