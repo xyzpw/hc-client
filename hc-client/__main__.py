@@ -556,8 +556,8 @@ def main():
                 if bool(codeBlockMatches) == False and BROWSERSTYLE:
                     coloredText = browserStyle(coloredText, initialColor=colorBeforeHighlight, resetColorAfterHighlight=False)
                 if trip != None:
-                    if uType == "moderator" and STARS:
-                        show_msg(f"|{getReadableTime(timestamp)}| \u2605 <{trip}> {coloredUser}: {coloredText}")
+                    if uType in ["moderator", "admin"] and STARS:
+                        show_msg(f"|{getReadableTime(timestamp)}|{getColor('yellow')}\u2605{getColor('reset')}<{trip}> {coloredUser}: {coloredText}")
                     else:
                         show_msg(f"|{getReadableTime(timestamp)}| <{trip}> {coloredUser}: {coloredText}")
                 else:
@@ -611,8 +611,8 @@ def main():
                             coloredText = browserStyle(coloredText, initialColor=colorBeforeHighlight, resetColorAfterHighlight=False)
                         initialMsgTimestamp = messageIds[customId]["timestamp"]
                         if trip != None:
-                            if uType == "moderator" and STARS:
-                                show_msg(f"|{getReadableTime(initialMsgTimestamp)}| \u2605 <{trip}> {coloredUser}: {coloredText}")
+                            if uType in ["moderator", "admin"] and STARS:
+                                show_msg(f"|{getReadableTime(initialMsgTimestamp)}|{getColor('yellow')}\u2605{getColor('reset')}<{trip}> {coloredUser}: {coloredText}")
                             else:
                                 show_msg(f"|{getReadableTime(initialMsgTimestamp)}| <{trip}> {coloredUser}: {coloredText}")
                         else:
