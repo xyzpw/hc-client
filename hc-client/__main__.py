@@ -33,7 +33,7 @@ uiSession = prompt_toolkit.PromptSession()
 allSyntaxStyles = list(get_all_styles())
 
 getCode = re.compile(r"```(?P<lang>.*?)?\n(?P<code>.*?)\n?(?:```|\Z)", re.DOTALL)
-singleLineCodePattern = re.compile(r"`(?P<code>.{1,})`")
+singleLineCodePattern = re.compile(r"`(?P<code>.{1,}?)`")
 
 def getFormattedCode(lang="python", code="", style="monokai"):
     try:
@@ -337,7 +337,7 @@ def showHelp(command=None):
 
 def browserStyle(text, initialColor, resetColorAfterHighlight=True):
     # some terminals don't have support for these
-    makePattern = lambda val: f"(?<![\S])({val}(?=[\w\d])(?P<sentence>.*?)(?<=[\w\d\.]){val})(?=\s|$)"
+    makePattern = lambda val: f"(?<![\S])({val}(?=[\w])(?P<sentence>.*?)(?<=[\w\.]){val})(?=\s|$)"
     text = re.sub(makePattern("__"), "\x1b[1m\g<sentence>\x1b[22m", text)
     text = re.sub(makePattern('_'), "\x1b[3m\g<sentence>\x1b[23m", text)
     text = re.sub(makePattern("\*\*"), "\x1b[1m\g<sentence>\x1b[22m", text)
@@ -471,6 +471,8 @@ def main():
                 text = data['text']
                 trip = data.get("trip")
                 _from = data.get("from")
+                isMe = _from == nick
+                isBot = _from in botlist
                 isWhisper = data.get("type") == "whisper"
                 ignoreUser = _from in blockedUsers or trip == None
                 if _from in blockedUsers and trip != None:
@@ -483,10 +485,13 @@ def main():
                     print(COLORS.GREEN, end='')
                     show_msg(f"|{getReadableTime(timestamp)}| <{trip}> * {text}")
                     print(COLORS.RESET, end='')
-                if NOTIFY and ignoreUser == False and isWhisper and NOTIFYWHISPER == False:
-                    playNotification()
-                if ignoreUser == False and isWhisper and NOTIFYWHISPER:
-                    playNotification()
+                if isWhisper:
+                    if isBot or isMe:
+                        continue
+                    notifyMe = NOTIFY and ignoreUser == False and NOTIFYWHISPER == False
+                    alertMe = NOTIFY == False and NOTIFYWHISPER and ignoreUser == False
+                    if notifyMe or alertMe:
+                        playNotification()
             case 'warn':
                 text = data['text']
                 print(COLORS.RED, end='')
@@ -564,9 +569,7 @@ def main():
                     show_msg(f"|{getReadableTime(timestamp)}| {coloredUser}: {coloredText}")
                 notifyMe = NOTIFY == True and isMe == False and ignoreUser == False
                 alertMe = bool(re.search(f"@{nick}\\b", text)) and NOTIFYMENTION == True and isMe == False and isBot == False and NOTIFY == False
-                if notifyMe:
-                    playNotification()
-                if alertMe:
+                if notifyMe or alertMe:
                     playNotification()
             case "updateMessage":
                 text = data.get("text")
@@ -607,7 +610,10 @@ def main():
                             textToSend = textToSend.replace("```", '', 1).strip()
                             textToSend = textToSend.replace(codeBlockCode, currentCode, 1).strip()
                             coloredText = f"\n{textToSend}"
-                        if bool(codeBlockMatches) == False:
+                        singleLineCode = singleLineCodePattern.search(textToSend)
+                        if bool(singleLineCode):
+                            coloredText = re.sub(singleLineCodePattern, rf"{getColor('lightblack', back=True)}\g<code>{getColor('reset', back=True)}", coloredText)
+                        if bool(codeBlockMatches) == False and BROWSERSTYLE:
                             coloredText = browserStyle(coloredText, initialColor=colorBeforeHighlight, resetColorAfterHighlight=False)
                         initialMsgTimestamp = messageIds[customId]["timestamp"]
                         if trip != None:
@@ -618,9 +624,9 @@ def main():
                         else:
                             show_msg(f"|{getReadableTime(initialMsgTimestamp)}| {coloredUser}: {coloredText}")
                         del(messageIds[customId])
-                        if NOTIFY and user not in blockedUsers:
-                            playNotification()
-                        if NOTIFYMENTION and NOTIFY == False and user not in blockedUsers and isBot == False:
+                        notifyMe = NOTIFY and user not in blockedUsers
+                        alertMe = NOTIFYMENTION and NOTIFY == False and user not in blockedUsers and isBot == False
+                        if notifyMe or alertMe:
                             playNotification()
             case "captcha":
                 uiSession.app.exit()
