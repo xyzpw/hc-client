@@ -1,5 +1,7 @@
-# About hc-client
-A script to connect to [hack.chat](https://hack.chat/) through your terminal.
+# hc-client
+A script to connect to [hack.chat](https://hack.chat/) through your terminal.<br><br>
+![hc-client-v5-preview](https://github.com/xyzpw/hc-client/assets/76017734/68f662a5-b0a4-42f4-9015-215f5f12cd96)
+
 
 ## Installation
 
@@ -43,21 +45,19 @@ Below is a list of all the commands.
 help:          displays help message
 clear:         clears the screen
 notify:        plays a notification when receiving a message
-block:         blocks a user
-unblock:       removes a blocked user from the blocklist
-blocklist:     displays blocklist to screen
-showblocked:   same as blocklist
+blocklist:     displays blocklist
 color:         change color of users' names/text
 syntaxstyle:   change theme color of highlighted code
 config:        displays your config
 nl:            prints a newline
 mentions:      highlights @mentions
 browserstyle:  uses browserstyle mode
-addbot:        adds user to botlist
-removebot:     removes user from botlist
 botlist:       displays botlist
 stars:         displays stars next to moderators names
 whisperlock:   disables the ability to send any messages other than whispers
+group:         assigns a specified user to a customizable group
+reset:         reset specified values to default
+groupcmd:      command for customizing groups
 ```
 
 For more information, you can run "--help COMMAND" in client to get usage info.
@@ -91,10 +91,5 @@ The config file name is "hc-client-config.json", modify this file in json format
         "stars": "1"
 }
 ```
-
-# Preview(s)
-
-Preview of v4 below.
-
-![hc-client-v4](https://github.com/xyzpw/hc-client/assets/76017734/a80957d6-5d81-49ae-b463-418a6ed99988)
-
+# Contributing
+Contributers are welcome if the code or files are non-breaking.
