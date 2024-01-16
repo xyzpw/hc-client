@@ -758,6 +758,8 @@ def main():
                 elif (playNotificationByStatus(user) or playMentionNotificationByStatus(user)) and not isMe:
                     playNotification()
             case "updateMessage":
+                if data.get("customId") == None:
+                    pass
                 text = data.get("text")
                 userId = data.get("userid")
                 mode = data.get("mode")
