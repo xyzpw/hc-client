@@ -196,8 +196,9 @@ def checkConfig():
     notifymention (default=1) => play notification when @mentioned
     notifywhisper (default=1) => play notification when whispered
     stars (default=1) => displays stars near the moderators names
+    mynickcolor => sends '/color <hex>' subsequent to joining channels
     """
-    global config, DONOTSAY, ignoreConfigWarnings, blockedUserReplaceText, blockedUsers, ADMINCOLOR, MODCOLOR, DEFAULTCOLOR, COLORME, BOTCOLOR, mySyntaxStyle, botlist, NOTIFYMENTION, MENTIONCOLOR, NOTIFYWHISPER, STARS
+    global config, DONOTSAY, ignoreConfigWarnings, blockedUserReplaceText, blockedUsers, ADMINCOLOR, MODCOLOR, DEFAULTCOLOR, COLORME, BOTCOLOR, mySyntaxStyle, botlist, NOTIFYMENTION, MENTIONCOLOR, NOTIFYWHISPER, STARS, myNickColor
     if config == {}:
         return
     else:
@@ -252,6 +253,7 @@ def checkConfig():
         if config.get("notifymention") == '0': NOTIFYMENTION = False
         if config.get("notifywhisper") == '0': NOTIFYWHISPER = False
         if config.get("stars") == '0': STARS = False
+        myNickColor = config.get("mynickcolor")
 
 
 class COLORS:
@@ -294,11 +296,12 @@ chatCommands = {
     "group": "Usage:\n\tgroup <group_name> [(add | remove) <user>]\nDescription:\n\tAssign a specified user to a customizable group.",
     "reset": "Usage:\n\treset (color | textcolor | notify | syntaxstyle | mentions | coloredmentions | botlist | stars | whisperlock | browserstyle)\nDescription:\n\tResets options to their default values.",
     "groupcmd": f"Usage:\n\tgroupcmd <group_name> [cmd arg]\nDescription:\n\tAllows the ability to customize a specified customizable group.\nArguments:\n\t[text | mention] color: {' '*15}changes the color of text, mentions, or names\n\tnotify [mention | whisper] (on | off): allows the ability to get notified when receiving messages\n\tblock (on | off): {' '*21}blocks all users within specified group",
+    "uptime": "Usage:\n\tuptime [-p]\nDescription:\n\tDisplays the uptime of the client.",
 }
 
 NOTIFY = False
 
-def send(msg):
+def send(msg: str):
     if (ws and ws.connected):
         ws.send(json.dumps(msg))
 
@@ -561,6 +564,41 @@ def isUserFromBlockedGroup(user):
     if getGroupBlockedStatus(usersGroup):
         return True
     return False
+
+def uptimeTimeFormat(seconds: int):
+    if isinstance(seconds, float):
+        seconds = int(seconds)
+    hoursElapsed = seconds // 3600
+    minutesElapsed = (seconds - (hoursElapsed*3600)) // 60
+    secondsElapsed = seconds - (hoursElapsed*3600 + minutesElapsed*60)
+    if hoursElapsed < 10:
+        hoursElapsed = f"0{hoursElapsed}"
+    if minutesElapsed < 10:
+        minutesElapsed = f"0{minutesElapsed}"
+    if secondsElapsed < 10:
+        secondsElapsed = f"0{seconds}"
+    return f"{hoursElapsed}:{minutesElapsed}:{secondsElapsed}"
+
+def uptimePretty(seconds: int):
+    if isinstance(seconds, float):
+        seconds = int(seconds)
+    days = seconds // 86400
+    hours = (seconds - days*86400) // 3600
+    minutes = (seconds - (days*86400 + hours*3600)) // 60
+    result = '?'
+    if days > 0:
+        displayHours = (seconds - days*86400) > 3600
+        if displayHours:
+            result = f"up {days} days, {hours} hours, {minutes} minutes"
+        else:
+            result = f"up {days} days, {minutes} minutes"
+    elif hours > 0:
+        result = f"up {hours} hours, {minutes} minutes"
+    elif minutes > 0:
+        result = f"up {minutes} minutes"
+    else:
+        result = f"up {seconds} seconds"
+    return result
 
 try:
     useConfigName = args.get("_nick") == None and config.get("nick") != None
@@ -857,6 +895,7 @@ try:
         clear()
 except Exception as ERROR:
     raise SystemError("could not connect to websocket: {}".format(ERROR))
+connected_epoch = int(time.time())
 
 p = threading.Thread(target=main, daemon=True)
 p.start()
@@ -883,6 +922,7 @@ STARS = True
 WHISPERLOCK = False
 botlist = []
 customGroups = dict()
+myNickColor = None
 
 mySyntaxStyle = "monokai"
 
@@ -892,6 +932,14 @@ try:
     checkConfig()
 except Exception as ERROR:
     raise SystemExit("failed to write config: {}".format(ERROR))
+if isinstance(myNickColor, str):
+    myNickColor = myNickColor.replace('#', '').upper()
+    if re.search(r"(?:[A-F0-9]{3}|[A-F0-9{6}])", myNickColor):
+        send({"cmd": "chat", "text": f"/color {myNickColor}"})
+    else:
+        print_cmdResponse("custom nick color is not a valid hex code - did not send message\n\n\n", error=True)
+elif myNickColor != None:
+    print_cmdResponse("custom nick color must be a string - did not send message\n\n\n", error=True)
 
 exitAttempt = False
 while True:
@@ -1398,6 +1446,14 @@ while True:
                             print_cmdResponse("group has been blocked")
                         else:
                             print_cmdResponse("group has been unblocked")
+            case "--uptime":
+                uptime = int(time.time()) - connected_epoch
+                if myText == "--uptime -p":
+                    print_cmdResponse(uptimePretty(uptime))
+                elif myText == "--uptime":
+                    print_cmdResponse(uptimeTimeFormat(uptime))
+                else:
+                    showHelp("uptime")
             case "--help":
                 if myText == "--help":
                     showHelp()

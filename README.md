@@ -88,7 +88,8 @@ The config file name is "hc-client-config.json", modify this file in json format
         "botlist": ["IAmABot", "ImABot"],
         "notifymention": "1",
         "notifywhisper": "1",
-        "stars": "1"
+        "stars": "1",
+        "mynickcolor": "#F06"
 }
 ```
 # Contributing
