@@ -378,7 +378,7 @@ def removeUnwantedChars(text):
 
 def browserStyle(text, initialColor, resetColorAfterHighlight=True):
     # some terminals don't have support for these
-    makePattern = lambda val: rf"{val}(?!\s|\\)(?P<sentence>.*?)(?<!\s|\\){val}"
+    makePattern = lambda val: rf"{val}(?!\s|\\)(?P<sentence>[^`]*?)(?<!\s|\\){val}"
     text = re.sub(makePattern("__"), "\x1b[1m\g<sentence>\x1b[22m", text)
     text = re.sub(makePattern('_'), "\x1b[3m\g<sentence>\x1b[23m", text)
     text = re.sub(makePattern("\*\*"), "\x1b[1m\g<sentence>\x1b[22m", text)
@@ -677,6 +677,8 @@ def main():
                 print(COLORS.RESET, end='')
             case 'info':
                 text = data['text']
+                if BROWSERSTYLE:
+                    text = browserStyle(text, initialColor="green", resetColorAfterHighlight=False)
                 trip = data.get("trip")
                 _from = data.get("from")
                 isMe = _from == nick
@@ -714,6 +716,8 @@ def main():
                     text = blockedUserReplaceText
                 else:
                     text = data.get("text")
+                    if text != None and BROWSERSTYLE:
+                        text = browserStyle(text, initialColor="green", resetColorAfterHighlight=False)
                 if trip == None:
                     trip = "null"
                 print(COLORS.GREEN, end='')
@@ -877,7 +881,8 @@ def main():
 DONOTSAY = []
 ws = websocket.WebSocket()
 try:
-    ws.connect("wss://hack.chat/chat-ws")
+    ws.connect("wss://hack.chat/chat-ws") #NOTE: comment for developer version (uncomment before pushing)
+    # ws.connect("ws://127.0.0.1:6060/") #NOTE: use this server for developer version: https://github.com/hack-chat/main?tab=readme-ov-file#developer-installation
     if '#' in nick:
         myPassword = nick[nick.find("#")+1:]
         if config.get("passwordProtection") == "1":
@@ -897,13 +902,13 @@ except Exception as ERROR:
     raise SystemError("could not connect to websocket: {}".format(ERROR))
 connected_epoch = int(time.time())
 
-p = threading.Thread(target=main, daemon=True)
-p.start()
-expiredMessageListener = threading.Thread(target=updateMessageTimer, daemon=True)
-expiredMessageListener.start()
-
-nickTags = []
 blockedUsers = []
+# botlist = []
+# nickTags = []
+# p = threading.Thread(target=main, daemon=True)
+# p.start()
+# expiredMessageListener = threading.Thread(target=updateMessageTimer, daemon=True)
+# expiredMessageListener.start()
 
 ignoreConfigWarnings = False
 blockedUserReplaceText = "{TEXT REMOVED}"
@@ -921,12 +926,18 @@ MENTIONCOLOR = "blue"
 STARS = True
 WHISPERLOCK = False
 botlist = []
+nickTags = []
 customGroups = dict()
 myNickColor = None
 
 mySyntaxStyle = "monokai"
 
 commandPrefix = "--"
+
+p = threading.Thread(target=main, daemon=True)
+p.start()
+expiredMessageListener = threading.Thread(target=updateMessageTimer, daemon=True)
+expiredMessageListener.start()
 
 try:
     checkConfig()
@@ -1294,7 +1305,8 @@ while True:
                     for group in customGroups:
                         allGroups.append(group)
                     if len(allGroups) == 0:
-                        print("no active groups")
+                        print_cmdResponse("no active groups")
+                        continue
                     allGroups = ", ".join(allGroups)
                     print_cmdResponse(f"active groups: {allGroups}")
                     continue
