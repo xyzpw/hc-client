@@ -27,6 +27,7 @@ parser.add_argument("--channel", help="name of channel to join", dest="_channel"
 parser.add_argument("--no-clear", help="prevents the screen from clearing after joining a channel", action="store_true")
 parser.add_argument("--no-stars", help=argparse.SUPPRESS, action="store_true")
 parser.add_argument("--reset-config", help="reset the user config and exit", action="store_true")
+parser.add_argument("--localhost", help="changes websocket target to localhost", action="store_true")
 args = parser.parse_args()
 args = vars(args)
 
@@ -880,9 +881,12 @@ def main():
 
 DONOTSAY = []
 ws = websocket.WebSocket()
+if args.get("localhost"):
+    ws_address = "ws://127.0.0.1:6060/" #NOTE: follow installation: https://github.com/hack-chat/main?tab=readme-ov-file#developer-installation
+else:
+    ws_address = "wss://hack.chat/chat-ws"
 try:
-    ws.connect("wss://hack.chat/chat-ws") #NOTE: comment for developer version (uncomment before pushing)
-    # ws.connect("ws://127.0.0.1:6060/") #NOTE: use this server for developer version: https://github.com/hack-chat/main?tab=readme-ov-file#developer-installation
+    ws.connect(ws_address)
     if '#' in nick:
         myPassword = nick[nick.find("#")+1:]
         if config.get("passwordProtection") == "1":
