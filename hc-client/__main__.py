@@ -294,7 +294,7 @@ chatCommands = {
     "botlist": "Usage:\n\tbotlist [(add | remove) <user...>]\nDescription:\n\tSpecified users will be treated as bots.",
     "stars": "Usage:\n\tstars [on | off]\nDescription:\n\tModerators and admins will have a star alongside their trip if enabled.",
     "whisperlock": "Usage:\n\twhisperlock [on | off]\nDescription:\n\tDisables the ability to send any messages other than whispers.",
-    "group": "Usage:\n\tgroup <group_name> [(add | remove) <user>]\nDescription:\n\tAssign a specified user to a customizable group.",
+    "group": "Usage:\n\tgroup <group_name> [(add | remove) <user> | rename <new_name>]\nDescription:\n\tAssign a specified user to a customizable group.",
     "reset": "Usage:\n\treset (color | textcolor | notify | syntaxstyle | mentions | coloredmentions | botlist | stars | whisperlock | browserstyle)\nDescription:\n\tResets options to their default values.",
     "groupcmd": f"Usage:\n\tgroupcmd <group_name> [cmd arg]\nDescription:\n\tAllows the ability to customize a specified customizable group.\nArguments:\n\t[text | mention] color: {' '*15}changes the color of text, mentions, or names\n\tnotify [mention | whisper] (on | off): allows the ability to get notified when receiving messages\n\tblock (on | off): {' '*21}blocks all users within specified group",
     "uptime": "Usage:\n\tuptime [-p]\nDescription:\n\tDisplays the uptime of the client.",
@@ -378,8 +378,10 @@ def removeUnwantedChars(text):
     return text.strip()
 
 def browserStyle(text, initialColor, resetColorAfterHighlight=True):
-    # some terminals don't have support for these
-    makePattern = lambda val: rf"{val}(?!\s|\\)(?P<sentence>[^`]*?)(?<!\s|\\){val}"
+    if re.search(r"^>.*?$", text):
+        return text
+    #NOTE: some terminals don't have support for these
+    makePattern = lambda val: rf"(?<!(?:`|<|@)){val}(?!\s|\\)(?P<sentence>[^`]*?)(?<!\s|\\){val}(?!(?:`|>))"
     text = re.sub(makePattern("__"), "\x1b[1m\g<sentence>\x1b[22m", text)
     text = re.sub(makePattern('_'), "\x1b[3m\g<sentence>\x1b[23m", text)
     text = re.sub(makePattern("\*\*"), "\x1b[1m\g<sentence>\x1b[22m", text)
@@ -1314,7 +1316,7 @@ while True:
                     allGroups = ", ".join(allGroups)
                     print_cmdResponse(f"active groups: {allGroups}")
                     continue
-                groupCmdSearch = re.search(r"^--group (?P<group_name>\w+)(?:\s(?P<cmd>add|remove)\s(?P<nick>\w{1,24}))?$", myText)
+                groupCmdSearch = re.search(r"^--group (?P<group_name>\w+)(?:\s(?P<cmd>add|remove|rename)\s(?P<nick>\w{1,24}|\*))?$", myText)
                 if not bool(groupCmdSearch):
                     print_cmdResponse("Invalid usage. See help for more info.", error=True)
                     continue
@@ -1355,17 +1357,34 @@ while True:
                     if not groupExists:
                         print_cmdResponse("group does not exist", error=True)
                         continue
-                    if len(customGroups[groupName]["users"]) == 1:
+                    if len(customGroups[groupName]["users"]) == 1 and groupNick != '*':
                         del customGroups[groupName]
                         del usersInGroups[groupNick]
                         print_cmdResponse("group deleted")
-                    elif len(customGroups[groupName]["users"]) > 1:
+                        continue
+                    elif len(customGroups[groupName]["users"]) > 1 or groupNick == "*":
+                        if groupNick == '*':
+                            for u in customGroups[groupName]["users"]:
+                                del usersInGroups[u]
+                            del customGroups[groupName]
+                            print_cmdResponse("group deleted")
+                            continue
                         if groupNick not in customGroups[groupName]["users"]:
                             print_cmdResponse("user not in group", error=True)
                             continue
                         customGroups[groupName]["users"].remove(groupNick)
                         del usersInGroups[groupNick]
                         print_cmdResponse("removed user from group")
+                elif groupCmd == "rename":
+                    if not groupExists or groupNick == "*":
+                        print_cmdResponse("group does not exist", error=True)
+                        continue
+                    if customGroups.get(groupNick) != None:
+                        print_cmdResponse("group rename target already exists", error=True)
+                        continue
+                    customGroups[groupNick] = customGroups[groupName]
+                    del customGroups[groupName]
+                    print_cmdResponse("group named")
             case "--reset":
                 if myText == "--reset":
                     showHelp("reset")
