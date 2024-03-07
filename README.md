@@ -1,5 +1,9 @@
 # hc-client
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/xyzpw/hc-client/total)
+![python-version](https://img.shields.io/badge/python->=3.10-blue)
+
 A script to connect to [hack.chat](https://hack.chat/) through your terminal.<br><br>
+
 ![hc-client-v5-preview](https://github.com/xyzpw/hc-client/assets/76017734/68f662a5-b0a4-42f4-9015-215f5f12cd96)
 
 
@@ -13,8 +17,25 @@ If you are getting execution errors on Linux, you have to add execution perms, y
 $ cd $FOLDERNAME
 $ pip3 install -r requirements.txt
 ```
-You may have to run `pip3 uninstall websocket` in order to import websocket-client. <br>
-The default websocket module is not the one used for this script, but they are both imported with the same name.
+If you are not using a pip virtual environment, may may have to run `pip3 uninstall websocket`<br>
+The default websocket module is not the one used for this script, but they are both imported with the same name.<br>
+#### Creating a Virtual Environment
+Using a virtual environment will allow you to use these packages without uninstalling some packages.<br>
+This following codeblock will demonstrate how to create one
+```bash
+$ cd hc-client/
+$ python3 -m venv .env
+```
+You can name your virtual environment anything, but it's recommended to stick with .env or .venv for Github repos.<br>
+##### Using Virtual Environments
+To enable your virtual environment via bash
+```bash
+$ source .env/bin/activate
+```
+To disable
+```bash
+$ deactivate
+```
 ### Installation via Git
 ```bash
 $ git clone https://github.com/xyzpw/hc-client.git

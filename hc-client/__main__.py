@@ -381,7 +381,7 @@ def browserStyle(text, initialColor, resetColorAfterHighlight=True):
     if re.search(r"^>.*?$", text):
         return text
     #NOTE: some terminals don't have support for these
-    makePattern = lambda val: rf"(?<!(?:`|<|@)){val}(?!\s|\\)(?P<sentence>[^`]*?)(?<!\s|\\){val}(?!(?:`|>))"
+    makePattern = lambda val: rf"(?<!(?:`|<|@)){val}(?!\s|\\)(?P<sentence>[^`]*?)(?<!\s|\\){val}(?!(?:\x1b|`|>))"
     text = re.sub(makePattern("__"), "\x1b[1m\g<sentence>\x1b[22m", text)
     text = re.sub(makePattern('_'), "\x1b[3m\g<sentence>\x1b[23m", text)
     text = re.sub(makePattern("\*\*"), "\x1b[1m\g<sentence>\x1b[22m", text)
@@ -389,6 +389,9 @@ def browserStyle(text, initialColor, resetColorAfterHighlight=True):
     text = re.sub(makePattern("~~"), "\x1b[9m\g<sentence>\x1b[29m", text)
     text = removeUnwantedChars(text)
     text = re.sub(r"(?<!\S)--(?!\S)", "\u2013", text) # en dash
+    text = re.sub(r"\(tm\)", "\u2122", text, flags=(re.MULTILINE | re.DOTALL | re.IGNORECASE))
+    text = re.sub(r"\(c\)", '\u00a9', text, flags=(re.MULTILINE | re.DOTALL | re.IGNORECASE))
+    text = re.sub(r"\(r\)", "\u00AE", text, flags=(re.MULTILINE | re.DOTALL | re.IGNORECASE))
     if resetColorAfterHighlight:
         text = re.sub(makePattern("=="), f"{colorama.Back.GREEN}{getColor('black')}\g<sentence>{colorama.Back.RESET}{getColor('reset')}", text)
     else:
