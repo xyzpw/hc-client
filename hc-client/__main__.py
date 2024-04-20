@@ -382,10 +382,11 @@ def browserStyle(text, initialColor, resetColorAfterHighlight=True):
         return text
     #NOTE: some terminals don't have support for these
     makePattern = lambda val: rf"(?<!(?:`|<|@)){val}(?!\s|\\)(?P<sentence>[^`]*?)(?<!\s|\\){val}(?!(?:\x1b|`|>))"
+    makeSingleCharPattern = lambda val: rf"(?<!`|<|@)(?<!{val}){val}(?!{val})(?!\s|\\)(?P<sent>[^`]*?)(?<!\s|\\){val}(?!{val})(?!`|>|@)"
     text = re.sub(makePattern("__"), "\x1b[1m\g<sentence>\x1b[22m", text)
-    text = re.sub(makePattern('_'), "\x1b[3m\g<sentence>\x1b[23m", text)
+    text = re.sub(makeSingleCharPattern("_"), "\x1b[3m\g<sent>\x1b[23m", text)
     text = re.sub(makePattern("\*\*"), "\x1b[1m\g<sentence>\x1b[22m", text)
-    text = re.sub(makePattern("\*"), "\x1b[3m\g<sentence>\x1b[23m", text)
+    text = re.sub(makeSingleCharPattern(r"\*"), "\x1b[3m\g<sent>\x1b[23m", text)
     text = re.sub(makePattern("~~"), "\x1b[9m\g<sentence>\x1b[29m", text)
     text = removeUnwantedChars(text)
     text = re.sub(r"(?<!\S)--(?!\S)", "\u2013", text) # en dash

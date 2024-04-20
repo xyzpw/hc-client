@@ -1,5 +1,6 @@
-hc-client/__pycache__/
+__pycache__/
 venv/
 env/
 .venv/
 .env/
+.vscode/
