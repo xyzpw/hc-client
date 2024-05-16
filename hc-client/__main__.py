@@ -96,7 +96,7 @@ def _(event):
 # clear = lambda: os.system("cls" if os.name=="nt" else "clear")
 def clear():
     if config.get("altClear") == "1":
-        os.system("printf '\e3J' && clear")
+        os.system(r"printf '\e3J' && clear")
     else:
         os.system("clear" if os.name != "nt" else "cls")
 
@@ -383,20 +383,20 @@ def browserStyle(text, initialColor, resetColorAfterHighlight=True):
     #NOTE: some terminals don't have support for these
     makePattern = lambda val: rf"(?<!(?:`|<|@)){val}(?!\s|\\)(?P<sentence>[^`]*?)(?<!\s|\\){val}(?!(?:\x1b|`|>))"
     makeSingleCharPattern = lambda val: rf"(?<!`|<|@)(?<!{val}){val}(?!{val})(?!\s|\\)(?P<sent>[^`]*?)(?<!\s|\\){val}(?!{val})(?!`|>|@)"
-    text = re.sub(makePattern("__"), "\x1b[1m\g<sentence>\x1b[22m", text)
-    text = re.sub(makeSingleCharPattern("_"), "\x1b[3m\g<sent>\x1b[23m", text)
-    text = re.sub(makePattern("\*\*"), "\x1b[1m\g<sentence>\x1b[22m", text)
-    text = re.sub(makeSingleCharPattern(r"\*"), "\x1b[3m\g<sent>\x1b[23m", text)
-    text = re.sub(makePattern("~~"), "\x1b[9m\g<sentence>\x1b[29m", text)
+    text = re.sub(makePattern("__"), "\x1b[1m" + r"\g<sentence>" + "\x1b[22m", text)
+    text = re.sub(makeSingleCharPattern("_"), "\x1b[3m" + r"\g<sent>" + "\x1b[23m", text)
+    text = re.sub(makePattern(r"\*\*"), "\x1b[1m" + r"\g<sentence>" + "\x1b[22m", text)
+    text = re.sub(makeSingleCharPattern(r"\*"), "\x1b[3m" + r"\g<sent>" + "\x1b[23m", text)
+    text = re.sub(makePattern("~~"), "\x1b[9m" + r"\g<sentence>" + "\x1b[29m", text)
     text = removeUnwantedChars(text)
     text = re.sub(r"(?<!\S)--(?!\S)", "\u2013", text) # en dash
     text = re.sub(r"\(tm\)", "\u2122", text, flags=(re.MULTILINE | re.DOTALL | re.IGNORECASE))
     text = re.sub(r"\(c\)", '\u00a9', text, flags=(re.MULTILINE | re.DOTALL | re.IGNORECASE))
     text = re.sub(r"\(r\)", "\u00AE", text, flags=(re.MULTILINE | re.DOTALL | re.IGNORECASE))
     if resetColorAfterHighlight:
-        text = re.sub(makePattern("=="), f"{colorama.Back.GREEN}{getColor('black')}\g<sentence>{colorama.Back.RESET}{getColor('reset')}", text)
+        text = re.sub(makePattern("=="), f"{colorama.Back.GREEN}{getColor('black')}" + r"\g<sentence>" + f"{colorama.Back.RESET}{getColor('reset')}", text)
     else:
-        text = re.sub(makePattern("=="), f"{colorama.Back.GREEN}{getColor('black')}\g<sentence>{colorama.Back.RESET}{getColor(initialColor)}", text)
+        text = re.sub(makePattern("=="), f"{colorama.Back.GREEN}{getColor('black')}" + r"\g<sentence>" + f"{colorama.Back.RESET}{getColor(initialColor)}", text)
     return text
 
 def makeColorful(text, color):
@@ -782,7 +782,7 @@ def main():
                     coloredText = f"\n{text}"
                 singleLineCode = singleLineCodePattern.search(text)
                 if bool(singleLineCode):
-                    coloredText = re.sub(singleLineCodePattern, rf"{getColor('lightblack', back=True)}\g<code>{getColor('reset', back=True)}", coloredText)
+                    coloredText = re.sub(singleLineCodePattern, rf"{getColor('lightblack', back=True)}" + r"\g<code>" + f"{getColor('reset', back=True)}", coloredText)
                 if COLOREDMENTIONS or customGroupHasColoredMentions(user):
                     _colorToUse = MENTIONCOLOR
                     if user in usersInGroups:
@@ -855,7 +855,7 @@ def main():
                             coloredText = f"\n{textToSend}"
                         singleLineCode = singleLineCodePattern.search(textToSend)
                         if bool(singleLineCode):
-                            coloredText = re.sub(singleLineCodePattern, rf"{getColor('lightblack', back=True)}\g<code>{getColor('reset', back=True)}", coloredText)
+                            coloredText = re.sub(singleLineCodePattern, rf"{getColor('lightblack', back=True)}" + r"\g<code>" + f"{getColor('reset', back=True)}", coloredText)
                         if COLOREDMENTIONS or customGroupHasColoredMentions(user):
                             _colorToUse = MENTIONCOLOR
                             if user in usersInGroups:
