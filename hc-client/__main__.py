@@ -678,7 +678,13 @@ def main():
                 user = data['nick']
                 nicks.remove(user)
                 nickTags.remove(f"@{user}")
-                del userIds[data.get("userid")]
+                try:
+                    for it in dict(userIds):
+                        if userIds[it] == user:
+                            del userIds[it]
+                        del it
+                except:
+                    pass
                 print(COLORS.GREEN, end='')
                 show_msg(f"|{getReadableTime(timestamp)}| * @{user} left")
                 print(COLORS.RESET, end='')
