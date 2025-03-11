@@ -883,6 +883,11 @@ def main():
                         del(messageIds[customId])
                         notifyMe = NOTIFY and user not in blockedUsers
                         alertMe = NOTIFYMENTION and NOTIFY == False and user not in blockedUsers and isBot == False
+
+                        # Disable alert if not mentioned.
+                        if alertMe:
+                            alertMe = re.search(rf"@{nick}\b", textToSend) != None
+
                         if notifyMe or alertMe:
                             playNotification()
                         elif (playNotificationByStatus(user) or playMentionNotificationByStatus(user)) and not isMe:
